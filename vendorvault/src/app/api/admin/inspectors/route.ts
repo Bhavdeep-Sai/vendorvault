@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const stationId = url.searchParams.get('stationId');
     const status = url.searchParams.get('status');
 
-    const query: any = {};
+    const query: Record<string, unknown> = {};
     if (status) query.status = status;
 
     if (auth.user.role === 'STATION_MANAGER') {
@@ -58,20 +58,21 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    let { userId, name, zone, employeeId, designation, stationId, contactNumber, email, password } = body;
+    const { userId: userIdFromBody, name, zone, employeeId, designation, stationId: stationIdFromBody, contactNumber, email, password } = body;
+    let userId = userIdFromBody;
 
     if (!employeeId || !designation) {
       return NextResponse.json({ error: 'employeeId and designation are required' }, { status: 400 });
     }
 
     // If no userId provided, create a user using provided name/email/password
-    let user: any = null;
+    let user: typeof User.prototype | null = null;
     if (!userId) {
       if (!email || !password || !name) {
         return NextResponse.json({ error: 'name, email and password are required to create a user' }, { status: 400 });
       }
       // check existing
-      let existing = await User.findOne({ email: email.toLowerCase().trim() });
+      const existing = await User.findOne({ email: email.toLowerCase().trim() });
       if (existing) {
         user = existing;
       } else {
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine stationId if station manager creating
-    let targetStationId = stationId;
+    let targetStationId = stationIdFromBody;
     if (!targetStationId && auth.user.role === 'STATION_MANAGER') {
       const station = await Station.findOne({ stationManagerId: auth.user.id });
       if (!station) return NextResponse.json({ error: 'Station not assigned' }, { status: 400 });
