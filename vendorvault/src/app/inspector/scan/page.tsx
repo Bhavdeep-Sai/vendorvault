@@ -67,7 +67,7 @@ export default function InspectorScanPage() {
           if (prev.followUpDate) return prev;
           const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
           const iso = d.toISOString().split('T')[0];
-          return { ...prev, followUpDate: iso };
+          return { ...prev, followUpDate: iso || '' };
         });
       } else {
         setResult(null);
@@ -99,8 +99,9 @@ export default function InspectorScanPage() {
         const cameras = await Html5Qrcode.getCameras();
         if (cameras && cameras.length) {
           const preferred = cameras.find((c: any) => /back|rear|environment/i.test(c.label)) || cameras[0];
-          const camId = preferred.id;
-          await html5QrCode.start(camId, config,
+          if (preferred) {
+            const camId = preferred.id;
+            await html5QrCode.start(camId, config,
             (decodedText) => {
               console.debug('QR decoded:', decodedText);
               stopScanner();
@@ -120,6 +121,7 @@ export default function InspectorScanPage() {
           applyVideoStyles();
           setUsingCamera(true);
           return;
+          }
         }
       } catch (err) {
         console.warn('getCameras failed, falling back to facingMode constraint', err);

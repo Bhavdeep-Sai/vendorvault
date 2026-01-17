@@ -110,7 +110,7 @@ if (mongoose.models?.Vendor) {
   delete mongoose.models.Vendor;
 }
 
-const Vendor = mongoose.model<IVendor>('Vendor', VendorSchema);
+const Vendor = (mongoose.models.Vendor as mongoose.Model<IVendor>) || mongoose.model<IVendor>('Vendor', VendorSchema);
 
 export default Vendor;
 

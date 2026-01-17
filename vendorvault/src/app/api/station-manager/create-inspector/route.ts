@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
-import { getAuthUser } from '@/middleware/auth';
+import { verifyAuthToken } from '@/middleware/auth';
 import bcrypt from 'bcryptjs';
 import { BCRYPT_ROUNDS } from '@/lib/constants';
 
 // Create inspector (Station Manager only)
 export async function POST(request: NextRequest) {
   try {
-    const auth = getAuthUser(request);
+    const auth = await verifyAuthToken(request);
     
     // Only station managers can create inspectors
-    if (!auth || auth.role !== 'STATION_MANAGER' || auth.status !== 'ACTIVE') {
+    if (!auth.success || auth.user?.role !== 'STATION_MANAGER' || auth.user?.status !== 'ACTIVE') {
       return NextResponse.json(
         { error: 'Unauthorized - Only active station managers can create inspectors' },
         { status: 403 }
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       role: 'INSPECTOR',
       status: 'ACTIVE',
       // Optional: Link inspector to the station manager
-      approvedBy: auth.userId,
+      approvedBy: auth.user?.id,
     });
 
     return NextResponse.json({
@@ -106,9 +106,9 @@ export async function POST(request: NextRequest) {
 // Get all inspectors created by the station manager
 export async function GET(request: NextRequest) {
   try {
-    const auth = getAuthUser(request);
+    const auth = await verifyAuthToken(request);
     
-    if (!auth || auth.role !== 'STATION_MANAGER') {
+    if (!auth.success || auth.user?.role !== 'STATION_MANAGER') {
       return NextResponse.json(
         { error: 'Unauthorized - Station Manager access required' },
         { status: 403 }
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     // Fetch inspectors created by this station manager
     const inspectors = await User.find({
       role: 'INSPECTOR',
-      approvedBy: auth.userId
+      approvedBy: auth.user.id
     })
     .select('-password')
     .sort({ createdAt: -1 })

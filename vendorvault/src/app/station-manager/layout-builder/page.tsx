@@ -160,11 +160,16 @@ function LayoutBuilderContent() {
 
     try {
       const exportedLayout = exportLayout();
+      if (!exportedLayout) {
+        toast.error('Failed to export layout');
+        setSaving(false);
+        return;
+      }
       exportedLayout.pricing = {
         unitToMeters: Number(unitToMeters) || DEFAULT_UNIT_TO_METERS,
         pricePer100x100Single: Number(pricePer100x100Single) || 0,
         pricePer100x100Dual: Number(pricePer100x100Dual) || 0,
-        securityDeposit: Number(securityDeposit) || 0,
+        securityDepositRate: Number(securityDeposit) || 0,
       };
 
       // Clamp/scale shops to meet area limit and enforced unit bounds (MIN_UNITS..MAX_UNITS)
@@ -276,7 +281,7 @@ function LayoutBuilderContent() {
         setUnitToMeters(existingPricing.unitToMeters ?? DEFAULT_UNIT_TO_METERS);
         setPricePer100x100Single(existingPricing.pricePer100x100Single ?? 0);
         setPricePer100x100Dual(existingPricing.pricePer100x100Dual ?? 0);
-        setSecurityDeposit(existingPricing.securityDeposit ?? 0);
+        setSecurityDeposit(existingPricing.securityDepositRate ?? 0);
       } else {
         setUnitToMeters(DEFAULT_UNIT_TO_METERS);
         setPricePer100x100Single(0);
@@ -384,7 +389,7 @@ function LayoutBuilderContent() {
               )}
               {layout?.pricing && (
                 <p className="text-xs text-gray-600 mt-0.5">
-                  Pricing: ₹{layout.pricing.pricePer100x100Single ?? 0} (100x100 single) • ₹{layout.pricing.pricePer100x100Dual ?? 0} (100x100 dual) • Deposit ₹{layout.pricing.securityDeposit ?? 0} • 1 unit = {layout.pricing.unitToMeters ?? unitToMeters} m
+                  Pricing: ₹{layout.pricing.pricePer100x100Single ?? 0} (100x100 single) • ₹{layout.pricing.pricePer100x100Dual ?? 0} (100x100 dual) • Deposit ₹{layout.pricing.securityDepositRate ?? 0} • 1 unit = {layout.pricing.unitToMeters ?? unitToMeters} m
                 </p>
               )}
             </div>

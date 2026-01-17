@@ -66,8 +66,6 @@ export async function GET(
       application: {
         _id: application._id,
         shopId: application.shopId,
-        stationName: application.stationName,
-        platformName: application.platformName,
         quotedRent: application.quotedRent,
         securityDeposit: application.securityDeposit,
         status: application.status,
@@ -144,10 +142,15 @@ export async function POST(
 
     // Add message to negotiation
     const newMessage = {
+      messageId: new Date().getTime().toString(),
       senderId: vendor.userId,
-      senderRole: 'VENDOR',
-      message: message || `Rent proposal: ₹${proposedRent}`,
+      senderRole: 'VENDOR' as const,
+      senderName: vendor.businessName || vendor.ownerName || 'Vendor',
+      messageType: proposedRent ? 'COUNTER_OFFER' as const : 'TEXT' as const,
+      content: message || `Rent proposal: ₹${proposedRent}`,
       proposedRent: proposedRent ? parseFloat(proposedRent) : undefined,
+      isRead: false,
+      isEdited: false,
       timestamp: new Date(),
     };
 
@@ -155,10 +158,15 @@ export async function POST(
     
     // Update current rent offer if provided
     if (proposedRent) {
-      negotiationRoom.currentRentOffer = parseFloat(proposedRent);
+      negotiationRoom.currentOffer = {
+        rent: parseFloat(proposedRent),
+        securityDeposit: negotiationRoom.currentOffer?.securityDeposit || application.securityDeposit || 0,
+        proposedBy: 'VENDOR',
+        proposedAt: new Date(),
+      };
     }
 
-    negotiationRoom.lastActivity = new Date();
+    negotiationRoom.lastActivityAt = new Date();
     await negotiationRoom.save();
 
     return NextResponse.json({

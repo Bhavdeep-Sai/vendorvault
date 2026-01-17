@@ -108,9 +108,11 @@ export default globalRateLimiter;
 export function getClientIp(request: Request): string {
     // Try various headers that might contain the real IP
     const headers = request.headers;
+    const forwardedFor = headers.get('x-forwarded-for');
+    const firstForwarded = forwardedFor ? (forwardedFor.split(',')[0]?.trim() || undefined) : undefined;
 
     return (
-        headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+        firstForwarded ||
         headers.get('x-real-ip') ||
         headers.get('cf-connecting-ip') || // Cloudflare
         headers.get('x-vercel-forwarded-for') || // Vercel

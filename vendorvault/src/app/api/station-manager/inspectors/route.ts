@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         await user.save();
       }
     } catch (e) {
-      console.warn('Failed to update user role for inspector:', e?.message || e);
+      console.warn('Failed to update user role for inspector:', e instanceof Error ? e.message : e);
     }
 
     return NextResponse.json({ 

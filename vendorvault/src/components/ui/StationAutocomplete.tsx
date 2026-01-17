@@ -233,7 +233,7 @@ export const StationAutocomplete: React.FC<StationAutocompleteProps> = ({
                         <span>Category {station.stationCategory}</span>
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {station.platformCount} platforms • {(station.dailyFootfall / 1000).toFixed(0)}K daily footfall
+                        {station.platformsCount || 0} platforms • {((station.dailyFootfallAvg || 0) / 1000).toFixed(0)}K daily footfall
                       </div>
                     </div>
                     <div className="ml-3">

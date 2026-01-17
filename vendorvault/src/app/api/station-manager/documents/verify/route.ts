@@ -6,6 +6,7 @@ import License from '@/models/License';
 import ShopApplication from '@/models/ShopApplication';
 import { getAuthUser } from '@/middleware/auth';
 import { createDocumentVerificationNotification } from '@/lib/notifications';
+import mongoose from 'mongoose';
 
 // POST /api/station-manager/documents/verify - Verify or reject a document
 export async function POST(request: NextRequest) {
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
 
             // Update application status
             app.status = 'REJECTED';
-            app.rejectedBy = authUser.userId;
+            app.rejectedBy = new mongoose.Types.ObjectId(authUser.userId);
             app.rejectedAt = new Date();
             app.rejectionReason = `Document verification failed: ${document.type}`;
             await app.save();

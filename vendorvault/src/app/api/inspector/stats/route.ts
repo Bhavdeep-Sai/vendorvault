@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       License.countDocuments({ status: 'APPROVED', complianceStatus: 'REQUIRES_ATTENTION' }),
       License.countDocuments({
         status: 'APPROVED',
-        'inspectionLogs.inspectorId': user._id,
+        'inspectionLogs.inspectorId': user.userId,
       }),
     ]);
 
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       nonCompliantLicenses: nonCompliantCount,
       requiresAttentionLicenses: requiresAttentionCount,
       myTotalInspections: myInspections,
-      recentInspections: recentInspections.map((license) => {
+      recentInspections: recentInspections.map((license: any) => {
         const lastInspection = license.inspectionLogs?.[license.inspectionLogs.length - 1];
         return {
           licenseNumber: license.licenseNumber,

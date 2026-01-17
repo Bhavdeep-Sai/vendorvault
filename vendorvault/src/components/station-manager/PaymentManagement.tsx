@@ -218,15 +218,15 @@ export function PaymentManagement({ refreshTrigger, onRefresh }: PaymentManageme
                   <tr key={payment._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {payment.vendor?.fullName || payment.vendorId?.fullName || payment.vendor?.businessName || 'Vendor'}
+                        {payment.vendorId?.fullName || 'Vendor'}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {payment.vendor?.contactNumber || payment.vendorId?.contactNumber || payment.vendor?.email || ''}
+                        {payment.vendorId?.contactNumber || payment.vendorId?.email || ''}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {payment.application?.shopId || payment.applicationId?.shopId || 'Shop'}
+                        {payment.applicationId?.shopId || 'Shop'}
                       </div>
                       <div className="text-xs text-gray-500">
                         {payment.paymentType}

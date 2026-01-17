@@ -819,10 +819,10 @@ export default function StationApplicationPage() {
               )}
 
               {/* Documents */}
-              {station.stationManagerId.documents &&
+              {station.stationManagerId?.documents &&
                 Object.keys(station.stationManagerId.documents).filter(
                   (k) =>
-                    station.stationManagerId.documents![
+                    station.stationManagerId?.documents![
                       k as keyof typeof station.stationManagerId.documents
                     ]
                 ).length > 0 && (

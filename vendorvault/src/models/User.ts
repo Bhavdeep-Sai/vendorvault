@@ -215,7 +215,7 @@ UserSchema.index({ role: 1, status: 1 }); // For filtering users by role and sta
 UserSchema.index({ status: 1, createdAt: -1 }); // For admin dashboard filtering
 UserSchema.index({ role: 1, createdAt: -1 }); // For role-based sorting
 
-const User = mongoose.models?.User || mongoose.model<IUser>('User', UserSchema);
+const User = (mongoose.models.User as mongoose.Model<IUser>) || mongoose.model<IUser>('User', UserSchema);
 
 export default User;
 

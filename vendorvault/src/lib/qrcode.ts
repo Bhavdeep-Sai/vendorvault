@@ -15,7 +15,11 @@ export async function generateQRCode(licenseNumber: string): Promise<{ qrCodeDat
   const qrCodeData = await QRCode.toDataURL(verificationUrl);
 
   // Upload to Cloudinary for permanent storage
-  const buffer = Buffer.from(qrCodeData.split(',')[1], 'base64');
+  const base64Data = qrCodeData.split(',')[1];
+  if (!base64Data) {
+    throw new Error('Failed to extract base64 data from QR code');
+  }
+  const buffer = Buffer.from(base64Data, 'base64');
   const qrCodeUrl = await new Promise<string>((resolve, reject) => {
     cloudinary.uploader.upload_stream(
       {

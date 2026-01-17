@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Station from '@/models/Station';
-import { verifyAuth } from '@/lib/auth';
+import { verifyAuthToken } from '@/middleware/auth';
 
 // Get all stations (for railway admin)
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await verifyAuth(request, ['RAILWAY_ADMIN']);
-    if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
+    const authResult = await verifyAuthToken(request);
+    if (!authResult.success || authResult.user?.role !== 'RAILWAY_ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
 // Create new station
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await verifyAuth(request, ['RAILWAY_ADMIN']);
-    if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
+    const authResult = await verifyAuthToken(request);
+    if (!authResult.success || authResult.user?.role !== 'RAILWAY_ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
@@ -102,9 +102,9 @@ export async function POST(request: NextRequest) {
 // Update station
 export async function PUT(request: NextRequest) {
   try {
-    const authResult = await verifyAuth(request, ['RAILWAY_ADMIN']);
-    if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
+    const authResult = await verifyAuthToken(request);
+    if (!authResult.success || authResult.user?.role !== 'RAILWAY_ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
@@ -171,9 +171,9 @@ export async function PUT(request: NextRequest) {
 // Delete station
 export async function DELETE(request: NextRequest) {
   try {
-    const authResult = await verifyAuth(request, ['RAILWAY_ADMIN']);
-    if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
+    const authResult = await verifyAuthToken(request);
+    if (!authResult.success || authResult.user?.role !== 'RAILWAY_ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();

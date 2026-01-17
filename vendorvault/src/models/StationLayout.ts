@@ -147,6 +147,12 @@ export interface IStationLayout extends Document {
     snapToGrid: boolean;
     scale: number;
   };
+  pricing?: {
+    unitToMeters?: number;
+    pricePer100x100Single?: number;
+    pricePer100x100Dual?: number;
+    securityDepositRate?: number;
+  };
   metadata: {
     version: string;
     createdBy: mongoose.Types.ObjectId;

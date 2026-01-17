@@ -240,7 +240,7 @@ export default function RegisterPage() {
             : formData.businessType,
           ownerName: formData.ownerName || formData.name,
           gstNumber: formData.gstNumber,
-          address: formData.businessAddress,
+          businessAddress: formData.businessAddress,
           email: formData.email,
           contactNumber: formData.phone,
         },
@@ -593,7 +593,7 @@ export default function RegisterPage() {
                               placeholder="Create a password"
                               minLength={6}
                             />
-                            <div
+                            <button
                               type="button"
                               onClick={() => setShowPassword(!showPassword)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
@@ -608,7 +608,7 @@ export default function RegisterPage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                               )}
-                            </div>
+                            </button>
                           </div>
                           {errors.password && <p className="text-red-600 text-xs mt-1">{errors.password}</p>}
                         </div>
@@ -629,7 +629,7 @@ export default function RegisterPage() {
                               placeholder="Confirm your password"
                               minLength={6}
                             />
-                            <div
+                            <button
                               type="button"
                               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
@@ -644,7 +644,7 @@ export default function RegisterPage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                               )}
-                            </div>
+                            </button>
                           </div>
                           {errors.confirmPassword && <p className="text-red-600 text-xs mt-1">{errors.confirmPassword}</p>}
                         </div>

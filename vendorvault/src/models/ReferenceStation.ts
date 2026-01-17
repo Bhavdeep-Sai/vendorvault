@@ -84,6 +84,6 @@ ReferenceStationSchema.index({ stationName: 'text', stationCode: 'text' });
 ReferenceStationSchema.index({ stationCode: 1 });
 ReferenceStationSchema.index({ railwayZone: 1 });
 
-const ReferenceStation = mongoose.models?.ReferenceStation || mongoose.model<IReferenceStation>('ReferenceStation', ReferenceStationSchema);
+const ReferenceStation = (mongoose.models.ReferenceStation as mongoose.Model<IReferenceStation>) || mongoose.model<IReferenceStation>('ReferenceStation', ReferenceStationSchema);
 
 export default ReferenceStation;

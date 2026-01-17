@@ -28,6 +28,13 @@ interface VendorInfo {
   address: string;
   gstNumber: string;
   stallType: string;
+  panNumber?: string;
+  user?: {
+    fullName?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
 }
 
 interface DocumentInfo {
@@ -281,7 +288,7 @@ export default function ApplicationDetailPage() {
                   <div>
                     <label className="text-sm font-medium text-gray-500">Full Name</label>
                     <p className="text-lg font-semibold text-gray-900 mt-1">
-                      {application.vendor.user?.fullName || application.vendor.user?.name || 'N/A'}
+                      {application.vendor.ownerName || 'N/A'}
                     </p>
                   </div>
                   <div>
@@ -355,7 +362,7 @@ export default function ApplicationDetailPage() {
                   <div>
                     <label className="text-sm font-medium text-gray-500">Shop ID</label>
                     <p className="text-lg font-mono font-semibold text-gray-900 mt-1">
-                      {application.shopId}
+                      {application.application.shopId}
                     </p>
                   </div>
                   <div>
@@ -376,7 +383,7 @@ export default function ApplicationDetailPage() {
                   <div>
                     <label className="text-sm font-medium text-gray-500">Submitted On</label>
                     <p className="text-gray-900 mt-1">
-                      {new Date(application.submittedAt).toLocaleDateString('en-IN', {
+                      {new Date(application.application.submittedAt).toLocaleDateString('en-IN', {
                         day: 'numeric',
                         month: 'long',
                         year: 'numeric'

@@ -21,6 +21,7 @@ import { useLayoutStore } from '@/store/layoutStore';
 interface Shop {
   x: number;
   width: number;
+  height?: number;
   category: string;
   minWidth?: number;
   maxWidth?: number;
@@ -41,7 +42,36 @@ interface Platform {
   length: number;
   width: number;
   shops: Shop[];
+  isDualTrack?: boolean;
+  isInverted?: boolean;
+  track?: {
+    x?: number;
+    y?: number;
+    length?: number;
+    height?: number;
+    trackNumber?: number;
+  };
+  restrictedZone?: {
+    height?: number;
+  };
+  topTrack?: {
+    x?: number;
+    y?: number;
+    length?: number;
+    height?: number;
+    trackNumber?: number;
+  };
+  bottomTrack?: {
+    x?: number;
+    y?: number;
+    length?: number;
+    height?: number;
+    trackNumber?: number;
+  };
   bottomRestrictedZone?: {
+    height?: number;
+  };
+  topRestrictedZone?: {
     height?: number;
   };
 }
@@ -55,7 +85,7 @@ interface InfrastructureBlock {
   isConnector?: boolean;
 }
 
-interface StationLayout {
+interface VendorStationLayout {
   _id: string;
   stationId: string;
   stationName: string;
@@ -81,7 +111,7 @@ export default function VendorApplyPageNew() {
   const [step, setStep] = useState(1);
   const [stations, setStations] = useState<Station[]>([]);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
-  const [stationLayout, setStationLayout] = useState<StationLayout | null>(null);
+  const [stationLayout, setStationLayout] = useState<VendorStationLayout | null>(null);
   
   // Step 2: Select Shops (multiple)
   interface SelectedShopItem {
@@ -179,16 +209,16 @@ export default function VendorApplyPageNew() {
       const data = await res.json();
       
       if (data.success && data.layout) {
-        // Load into layout store to apply the same transformations used by StationCanvas
+        // Use the layout from API which includes _id
+        setStationLayout(data.layout);
+        // Also load into layout store for any transformations
         useLayoutStore.getState().loadLayout(data.layout);
-        const transformed = useLayoutStore.getState().layout;
-        setStationLayout(transformed as StationLayout);
         // Set vendor-visible pricing defaults
         const pricing = data.layout.pricing ?? {};
         setVendorUnitToMeters(pricing.unitToMeters ?? DEFAULT_UNIT_TO_METERS);
         setVendorPricePer100x100Single(pricing.pricePer100x100Single ?? 0);
         setVendorPricePer100x100Dual(pricing.pricePer100x100Dual ?? 0);
-        setVendorSecurityDeposit(pricing.securityDeposit ?? 0);
+        setVendorSecurityDeposit(pricing.securityDepositRate ?? 0);
         setSelectedStation(station);
         setStep(2);
       } else {

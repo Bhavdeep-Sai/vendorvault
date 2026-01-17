@@ -3,6 +3,7 @@ import { getAuthUser } from '@/middleware/auth';
 import connectDB from '@/lib/mongodb';
 import License from '@/models/License';
 import Vendor from '@/models/Vendor';
+import User from '@/models/User';
 
 interface InspectionLog {
   inspectorId: string;
@@ -37,6 +38,12 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
+    // Fetch the user details to get the name
+    const userDetails = await User.findById(user.userId).select('name');
+    if (!userDetails) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const license = await License.findOne({ licenseNumber });
     if (!license) {
       return NextResponse.json({ error: 'License not found' }, { status: 404 });
@@ -50,8 +57,8 @@ export async function POST(request: NextRequest) {
     }
 
     const inspectionLog: InspectionLog = {
-      inspectorId: user._id,
-      inspectorName: user.name,
+      inspectorId: user.userId,
+      inspectorName: userDetails.name,
       inspectionDate: new Date(),
       notes: notes || '',
       complianceStatus,

@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
           unitToMeters: layoutData.pricing.unitToMeters ?? existingLayout.pricing?.unitToMeters ?? DEFAULT_UNIT_TO_METERS,
           pricePer100x100Single: layoutData.pricing.pricePer100x100Single ?? existingLayout.pricing?.pricePer100x100Single ?? 0,
           pricePer100x100Dual: layoutData.pricing.pricePer100x100Dual ?? existingLayout.pricing?.pricePer100x100Dual ?? 0,
-          securityDeposit: layoutData.pricing.securityDeposit ?? existingLayout.pricing?.securityDeposit ?? 0,
+          securityDepositRate: layoutData.pricing.securityDepositRate ?? existingLayout.pricing?.securityDepositRate ?? 0,
         };
       }
       

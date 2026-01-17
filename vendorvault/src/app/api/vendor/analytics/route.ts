@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import { verifyToken } from '@/lib/auth';
+import { verifyTokenString } from '@/lib/auth';
 import ShopApplication from '@/models/ShopApplication';
 import User from '@/models/User';
 
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const decoded = verifyToken(token);
+    const decoded = verifyTokenString(token);
     if (!decoded?.userId) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }

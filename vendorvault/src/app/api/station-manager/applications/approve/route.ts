@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
       if (!existingAgreement) {
         // Ensure required fields exist, provide conservative fallbacks to avoid validation errors
         const safeStationId = application.stationId || null;
-        const safeShopId = application.shopId || application.shopNumber || String(application._id).slice(-6);
+        const safeShopId = application.shopId || String(application._id).slice(-6);
         if (!safeStationId) {
           console.warn('Skipping agreement creation: missing stationId for application', application._id);
         } else {
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
           const startDate = application.licenseIssuedAt || new Date();
           const endDate = application.licenseExpiresAt || ((): Date => {
             const d = new Date(startDate);
-            d.setMonth(d.getMonth() + (months && months > 0 ? months : 12));
+            d.setMonth(d.getMonth() + 12); // Default to 12 months
             return d;
           })();
 
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
 
           const monthlyRent = application.finalAgreedRent || application.quotedRent || 0;
           const securityDeposit = application.finalSecurityDeposit || application.securityDeposit || 0;
-          const duration = months && months > 0 ? months : 12;
+          const duration = 12; // Default to 12 months
 
           const agreement = await VendorAgreement.create({
             vendorId: application.vendorId,
@@ -243,51 +243,53 @@ export async function POST(request: NextRequest) {
         // Use the canonical agreement (existing or newly created) for subsequent updates
         const agr = existingAgreement;
 
-        // Create or ensure payments exist (idempotent)
-        try {
-          // Security deposit payment
-          if ((agr.securityDeposit || application.finalSecurityDeposit || application.securityDeposit || 0) > 0) {
-            const depExists = await VendorPayment.findOne({ applicationId: application._id, paymentType: 'SECURITY_DEPOSIT' });
-            if (!depExists) {
+        // Create or ensure payments exist (idempotent) - only if agreement exists
+        if (agr) {
+          try {
+            // Security deposit payment
+            if ((agr.securityDeposit || application.finalSecurityDeposit || application.securityDeposit || 0) > 0) {
+              const depExists = await VendorPayment.findOne({ applicationId: application._id, paymentType: 'SECURITY_DEPOSIT' });
+              if (!depExists) {
+                await VendorPayment.create({
+                  vendorId: application.vendorId,
+                  applicationId: application._id,
+                  stationId: safeStationId,
+                  shopId: agr.shopId || safeShopId,
+                  paymentType: 'SECURITY_DEPOSIT',
+                  dueDate: new Date(),
+                  amount: agr.securityDeposit || application.finalSecurityDeposit || application.securityDeposit || 0,
+                  paidAmount: 0,
+                  balanceAmount: agr.securityDeposit || application.finalSecurityDeposit || application.securityDeposit || 0,
+                  status: 'PENDING',
+                  createdBy: new mongoose.Types.ObjectId(authResult.user.id),
+                });
+              }
+            }
+
+            // Rent payment (first month) - ensure billingMonth/billingYear set so analytics can pick it up
+            const rentExists = await VendorPayment.findOne({ applicationId: application._id, paymentType: 'RENT' });
+            if (!rentExists) {
+              const rentDueDate = application.licenseIssuedAt || new Date();
+              const billingMonth = `${rentDueDate.getFullYear()}-${String(rentDueDate.getMonth() + 1).padStart(2, '0')}`;
               await VendorPayment.create({
                 vendorId: application.vendorId,
                 applicationId: application._id,
                 stationId: safeStationId,
                 shopId: agr.shopId || safeShopId,
-                paymentType: 'SECURITY_DEPOSIT',
-                dueDate: new Date(),
-                amount: agr.securityDeposit || application.finalSecurityDeposit || application.securityDeposit || 0,
+                paymentType: 'RENT',
+                dueDate: rentDueDate,
+                amount: agr.monthlyRent || application.finalAgreedRent || application.quotedRent || 0,
                 paidAmount: 0,
-                balanceAmount: agr.securityDeposit || application.finalSecurityDeposit || application.securityDeposit || 0,
-                status: 'PENDING',
+                balanceAmount: agr.monthlyRent || application.finalAgreedRent || application.quotedRent || 0,
+                status: agr.monthlyRent > 0 ? 'PENDING' : 'PAID',
+                billingMonth,
+                billingYear: rentDueDate.getFullYear(),
                 createdBy: new mongoose.Types.ObjectId(authResult.user.id),
               });
             }
+          } catch (e) {
+            console.error('Failed to ensure payments for application', application._id, e);
           }
-
-          // Rent payment (first month) - ensure billingMonth/billingYear set so analytics can pick it up
-          const rentExists = await VendorPayment.findOne({ applicationId: application._id, paymentType: 'RENT' });
-          if (!rentExists) {
-            const rentDueDate = application.licenseIssuedAt || new Date();
-            const billingMonth = `${rentDueDate.getFullYear()}-${String(rentDueDate.getMonth() + 1).padStart(2, '0')}`;
-            await VendorPayment.create({
-              vendorId: application.vendorId,
-              applicationId: application._id,
-              stationId: safeStationId,
-              shopId: agr.shopId || safeShopId,
-              paymentType: 'RENT',
-              dueDate: rentDueDate,
-              amount: agr.monthlyRent || application.finalAgreedRent || application.quotedRent || 0,
-              paidAmount: 0,
-              balanceAmount: agr.monthlyRent || application.finalAgreedRent || application.quotedRent || 0,
-              status: agr.monthlyRent > 0 ? 'PENDING' : 'PAID',
-              billingMonth,
-              billingYear: rentDueDate.getFullYear(),
-              createdBy: new mongoose.Types.ObjectId(authResult.user.id),
-            });
-          }
-        } catch (e) {
-          console.error('Failed to ensure payments for application', application._id, e);
         }
       }
 
@@ -318,7 +320,7 @@ export async function POST(request: NextRequest) {
           if (platform) {
             // find the shop entry and update using agr.shopId fallback
             const safeStationId = application.stationId || null;
-            const safeShopId = application.shopId || application.shopNumber || String(application._id).slice(-6);
+            const safeShopId = application.shopId || String(application._id).slice(-6);
             const matchId = agr && agr.shopId ? String(agr.shopId) : String(application.shopId || safeShopId);
             const idx = platform.shops.findIndex((s: any) => String(s._id) === matchId || String(s.shopNumber) === matchId || String(s.shopId) === matchId || String(s.id) === matchId);
             if (idx !== -1) {
@@ -340,7 +342,7 @@ export async function POST(request: NextRequest) {
       if (agr) {
         try {
           const safeStationId = application.stationId || null;
-          const safeShopId = application.shopId || application.shopNumber || String(application._id).slice(-6);
+          const safeShopId = application.shopId || String(application._id).slice(-6);
           const monthlyRent = application.finalAgreedRent || application.quotedRent || 0;
           const endDate = application.licenseExpiresAt || (() => {
             const d = new Date();
@@ -364,7 +366,7 @@ export async function POST(request: NextRequest) {
                   s.isAllocated = true;
                   s.vendorId = String(application.vendorId);
                   s.rent = monthlyRent || s.rent;
-                  s.shopName = s.shopName || application.shopName || application.businessName || '';
+                  s.shopName = s.shopName || application.shopName || '';
                   // store lease end date for future un-allocation tasks
                   try {
                     s.leaseEndDate = endDate;
