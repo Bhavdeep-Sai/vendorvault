@@ -1,0 +1,21 @@
+{
+  "name": "VendorVault",
+  "short_name": "VendorVault",
+  "description": "Professional railway vendor license management platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0891b2",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "en-IN",
+  "dir": "ltr"
+}

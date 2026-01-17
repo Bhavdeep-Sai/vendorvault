@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /vendor/
+Disallow: /station-manager/
+Disallow: /inspector/
+Disallow: /railway-admin/
+Disallow: /auth/
+
+Sitemap: https://your-domain.vercel.app/sitemap.xml
