@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
         );
       }
     } catch (e) {
-      console.warn('Failed to update agreement security deposit status:', e instanceof Error ? e.message : e);
+      console.warn('Failed to update agreement security deposit status:', e?.message || e);
     }
 
     return NextResponse.json({ 

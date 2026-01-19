@@ -160,12 +160,6 @@ export interface StationLayout {
     createdBy: string;
     isLocked: boolean; // Lock entire layout
   };
-  pricing?: {
-    unitToMeters?: number;
-    pricePer100x100Single?: number;
-    pricePer100x100Dual?: number;
-    securityDepositRate?: number;
-  };
 }
 
 // Drag and drop types

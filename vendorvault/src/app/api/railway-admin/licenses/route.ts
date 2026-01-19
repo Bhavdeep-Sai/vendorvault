@@ -54,7 +54,12 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const pagination = createPaginationResult(filteredLicenses, totalLicenses, page, limit);
+    const pagination = createPaginationResult({
+      data: filteredLicenses,
+      total: totalLicenses,
+      page,
+      limit
+    });
 
     return NextResponse.json({
       licenses: filteredLicenses,

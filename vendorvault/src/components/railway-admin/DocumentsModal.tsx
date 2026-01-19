@@ -168,10 +168,10 @@ export function DocumentsModal({ user, onClose, onRefresh }: DocumentsModalProps
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
-                  checked={selectedDocuments.length === Object.keys(user.documents || {}).filter(k => user.documents![k as keyof typeof user.documents]).length}
+                  checked={selectedDocuments.length === Object.keys(user.documents).filter(k => user.documents![k as keyof typeof user.documents]).length}
                   onChange={(e) => {
                     if (e.target.checked) {
-                      setSelectedDocuments(Object.keys(user.documents || {}).filter(k => user.documents![k as keyof typeof user.documents]));
+                      setSelectedDocuments(Object.keys(user.documents).filter(k => user.documents![k as keyof typeof user.documents]));
                     } else {
                       setSelectedDocuments([]);
                     }
@@ -249,7 +249,7 @@ export function DocumentsModal({ user, onClose, onRefresh }: DocumentsModalProps
             })}
           </div>
 
-          {(!user.documents || Object.keys(user.documents).filter(k => user.documents![k as keyof typeof user.documents]).length === 0) && (
+          {(!user.documents || Object.keys(user.documents).filter(k => user.documents![k]).length === 0) && (
             <div className="text-center py-12 text-gray-500">
               No documents uploaded
             </div>

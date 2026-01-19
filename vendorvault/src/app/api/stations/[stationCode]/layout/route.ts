@@ -12,7 +12,7 @@ import Station from '@/models/Station';
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ stationCode: string }> }
+  context: { params: { stationCode: string } }
 ) {
   try {
     await connectDB();
@@ -39,9 +39,9 @@ export async function GET(
     }
 
     // Only return layout for approved and active stations with completed layouts
-    if (station.approvalStatus !== 'APPROVED' ||
-      station.operationalStatus !== 'ACTIVE' ||
-      !station.layoutCompleted) {
+    if (station.approvalStatus !== 'APPROVED' || 
+        station.operationalStatus !== 'ACTIVE' || 
+        !station.layoutCompleted) {
       return NextResponse.json(
         { error: 'Station layout is not available' },
         { status: 403 }

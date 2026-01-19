@@ -1109,7 +1109,6 @@ const ShopZoneRenderer: React.FC<ShopZoneRendererProps> = ({
       pharmacy: "#F87171",
       electronics: "#FBBF24",
       clothing: "#EC4899",
-      general: "#9CA3AF",
       other: "#9CA3AF",
     }[shop.category] || "#9CA3AF";
 

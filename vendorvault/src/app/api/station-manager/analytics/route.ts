@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (e) {
-        console.warn('Failed to derive total shops from StationLayout:', e instanceof Error ? e.message : e);
+        console.warn('Failed to derive total shops from StationLayout:', e?.message || e);
       }
     }
 
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     try {
       occupiedShops = await VendorAgreement.countDocuments({ stationId, status: 'ACTIVE' });
     } catch (e) {
-      console.warn('Failed to count active agreements for occupancy:', e instanceof Error ? e.message : e);
+      console.warn('Failed to count active agreements for occupancy:', e?.message || e);
     }
 
     const availableShops = Math.max(0, totalShops - occupiedShops);

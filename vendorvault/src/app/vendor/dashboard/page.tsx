@@ -72,8 +72,12 @@ interface Analytics {
   monthlyTrend: number;
 }
 
+import QRCode from 'qrcode';
+import { useRef } from 'react';
+
 export default function VendorDashboard() {
   const { user, vendor } = useAuth();
+  const welcomeQrRef = useRef<HTMLCanvasElement>(null);
   const [licenses, setLicenses] = useState<License[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [vendorShopCount, setVendorShopCount] = useState<number | null>(null);
@@ -94,6 +98,19 @@ export default function VendorDashboard() {
       fetchAnalytics(),
       checkValidation()
     ]).finally(() => setLoading(false));
+
+    // Generate QR for home page
+    if (welcomeQrRef.current) {
+      const url = `${window.location.origin}/`;
+      QRCode.toCanvas(welcomeQrRef.current, url, {
+        width: 120,
+        margin: 1,
+        color: {
+          dark: '#0e7490',
+          light: '#FFFFFF',
+        },
+      });
+    }
   }, []);
 
   const checkValidation = async () => {
@@ -203,6 +220,17 @@ export default function VendorDashboard() {
           ) : undefined
         }
       >
+        {/* Welcome QR Hero Section */}
+        <div className="flex items-center gap-6 mb-8 bg-cyan-50 rounded-xl p-4 shadow-sm">
+          <div className="shrink-0">
+            <canvas ref={welcomeQrRef} className="w-28 h-28" />
+          </div>
+          <div>
+            <div className="font-bold text-lg text-cyan-700 mb-1">Scan to visit VendorVault</div>
+            <div className="text-gray-600 text-sm">Opens home page with welcome animation. No login required.</div>
+          </div>
+        </div>
+
         {/* Validation Warning */}
         {validationStatus && !validationStatus.isValid && (
           <Alert
@@ -416,7 +444,7 @@ export default function VendorDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+        <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Link

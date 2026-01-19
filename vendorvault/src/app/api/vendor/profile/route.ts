@@ -35,13 +35,6 @@ export async function GET(request: NextRequest) {
       vendor = await Vendor.findById(newVendor._id).lean();
     }
 
-    if (!vendor) {
-      return NextResponse.json(
-        { error: 'Vendor profile could not be created' },
-        { status: 500 }
-      );
-    }
-
     // Return separate user and vendor data
     return NextResponse.json({ 
       user: {

@@ -118,7 +118,7 @@ export function UsersManagement({ users, onRefresh, onViewDocuments }: UsersMana
                         onClick={() => onViewDocuments(user)}
                         className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                       >
-                        View ({Object.keys(user.documents).filter(k => user.documents![k as keyof typeof user.documents]).length})
+                        View ({Object.keys(user.documents).filter(k => user.documents![k]).length})
                       </button>
                     ) : (
                       <span className="text-gray-400 text-sm">No documents</span>
