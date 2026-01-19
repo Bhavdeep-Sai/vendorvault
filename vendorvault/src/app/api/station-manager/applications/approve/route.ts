@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
         if (!license) {
           console.log('📄 Creating License document with QR code...');
           
-          // Generate QR code for license
+          // Generate QR code for license (simple license number for easy scanning)
           let qrCodeData = '';
           let qrCodeUrl = '';
           
@@ -236,18 +236,23 @@ export async function POST(request: NextRequest) {
           
           // Get station details
           let stationCode = 'UNK';
+          let stationName = 'N/A';
           try {
             const station = await Station.findById(application.stationId);
             if (station?.stationCode) stationCode = station.stationCode;
+            if (station?.stationName) stationName = station.stationName;
           } catch (e) {
-            console.warn('Could not fetch station code:', e);
+            console.warn('Could not fetch station details:', e);
           }
           
-          // Get vendor details for emergency contact
+          // Get vendor details for emergency contact  
           let emergencyContact = '';
+          let vendorName = 'N/A';
           try {
             const vendorUser = await User.findById(application.vendorId);
             if (vendorUser?.phone) emergencyContact = vendorUser.phone;
+            if (vendorUser?.fullName) vendorName = vendorUser.fullName;
+            else if (vendorUser?.name) vendorName = vendorUser.name;
           } catch (e) {
             console.warn('Could not fetch vendor contact:', e);
           }
@@ -285,6 +290,8 @@ export async function POST(request: NextRequest) {
               validUntil: endDate,
               licenseType: 'PERMANENT',
               emergencyContact,
+              generatedAt: new Date(),
+              dataFormat: 'LICENSE_NUMBER_ONLY'
             },
             complianceStatus: 'COMPLIANT',
           });
@@ -300,6 +307,14 @@ export async function POST(request: NextRequest) {
               const qrResult = await generateLicenseQRCode(license.licenseNumber);
               license.qrCodeData = qrResult.qrCodeData;
               license.qrCodeUrl = qrResult.qrCodeUrl;
+              
+              // Update metadata
+              license.qrCodeMetadata = {
+                ...license.qrCodeMetadata,
+                generatedAt: new Date(),
+                dataFormat: 'LICENSE_NUMBER_ONLY'
+              };
+              
               await license.save();
               console.log('✅ QR code added to existing license');
             } catch (qrError) {

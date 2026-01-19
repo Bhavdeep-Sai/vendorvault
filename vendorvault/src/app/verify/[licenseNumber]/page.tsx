@@ -32,18 +32,58 @@ interface LicenseData {
     approvedAt?: string;
   };
   vendor: {
-    businessName: string;
-    businessType: string;
     ownerName: string;
+    fullName?: string;
     phone?: string;
     email?: string;
-    stationName: string;
+    businessName: string;
+    businessType: string;
+    businessDescription?: string;
+    businessRegistration?: string;
+    gstNumber?: string;
+    panNumber?: string;
+    businessAddress?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    bankName?: string;
+    accountHolderName?: string;
+    ifscCode?: string;
+    stationName?: string;
     platformNumber?: string;
+    experienceYears?: number;
+    previousExperience?: boolean;
+    category?: string;
   } | null;
+  shop?: {
+    name: string;
+    id: string;
+    description?: string;
+    location?: {
+      station: string;
+      platform: string;
+      stationCode: string;
+    };
+  };
+  financial?: {
+    monthlyRent: number;
+    securityDeposit: number;
+    proposedRent: number;
+    agreedRent: number;
+    rentStatus: string;
+    depositStatus: string;
+  };
   verification?: {
     documentsVerified: boolean;
     verifiedAt?: string;
     verifiedBy?: string;
+    licenseActive?: boolean;
+    complianceStatus?: string;
+  };
+  scanInfo?: {
+    scannedAt: string;
+    dataFormat: string;
+    inspector: string;
   };
 }
 
@@ -156,57 +196,154 @@ export default function VerifyPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Owner Name</p>
-                      <p className="text-lg font-semibold text-gray-900">{data.vendor.ownerName}</p>
-                    </div>
-                    {data.vendor.phone && (
+                  {/* Vendor Business Information */}
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Vendor Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <p className="text-sm text-gray-600">Contact Number</p>
-                        <p className="text-lg font-semibold text-gray-900">{data.vendor.phone}</p>
+                        <p className="text-sm text-gray-600">Owner Name</p>
+                        <p className="text-lg font-semibold text-gray-900">{data.vendor.ownerName}</p>
+                      </div>
+                      {data.vendor.phone && (
+                        <div>
+                          <p className="text-sm text-gray-600">Contact Number</p>
+                          <p className="text-lg font-semibold text-gray-900">{data.vendor.phone}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm text-gray-600">Business Name</p>
+                        <p className="text-lg font-semibold text-gray-900">{data.vendor.businessName}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Business Type</p>
+                        <p className="text-base text-gray-700">{data.vendor.businessType}</p>
+                      </div>
+                      {data.vendor.gstNumber && data.vendor.gstNumber !== 'N/A' && (
+                        <div>
+                          <p className="text-sm text-gray-600">GST Number</p>
+                          <p className="text-base text-gray-700">{data.vendor.gstNumber}</p>
+                        </div>
+                      )}
+                      {data.vendor.businessRegistration && data.vendor.businessRegistration !== 'N/A' && (
+                        <div>
+                          <p className="text-sm text-gray-600">Registration Number</p>
+                          <p className="text-base text-gray-700">{data.vendor.businessRegistration}</p>
+                        </div>
+                      )}
+                    </div>
+                    {data.vendor.businessAddress && data.vendor.businessAddress !== 'N/A' && (
+                      <div className="mt-3">
+                        <p className="text-sm text-gray-600">Business Address</p>
+                        <p className="text-base text-gray-700">
+                          {data.vendor.businessAddress}
+                          {data.vendor.city && data.vendor.city !== 'N/A' && `, ${data.vendor.city}`}
+                          {data.vendor.state && data.vendor.state !== 'N/A' && `, ${data.vendor.state}`}
+                          {data.vendor.pincode && data.vendor.pincode !== 'N/A' && ` - ${data.vendor.pincode}`}
+                        </p>
                       </div>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Shop Name</p>
-                      <p className="text-lg font-semibold text-gray-900">{data.license.shopName || 'N/A'}</p>
-                    </div>
-                    {data.license.shopId && data.license.shopId !== 'N/A' && (
+                  {/* Shop Information */}
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <h4 className="text-sm font-semibold text-green-900 mb-3">Shop Details</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <p className="text-sm text-gray-600">Shop ID</p>
-                        <p className="text-base text-gray-700">{data.license.shopId}</p>
+                        <p className="text-sm text-green-700">Shop Name</p>
+                        <p className="text-lg font-semibold text-green-900">{data.shop?.name || data.license.shopName || 'N/A'}</p>
+                      </div>
+                      {(data.shop?.id || data.license.shopId) && (
+                        <div>
+                          <p className="text-sm text-green-700">Shop ID</p>
+                          <p className="text-base text-green-800">{data.shop?.id || data.license.shopId}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm text-green-700">Station</p>
+                        <p className="text-lg font-semibold text-green-900">{data.shop?.location?.station || data.license.stationName}</p>
+                      </div>
+                      {(data.shop?.location?.platform || data.license.platformName) && (
+                        <div>
+                          <p className="text-sm text-green-700">Platform</p>
+                          <p className="text-lg font-semibold text-green-900">{data.shop?.location?.platform || data.license.platformName}</p>
+                        </div>
+                      )}
+                    </div>
+                    {data.shop?.description && data.shop.description !== 'N/A' && (
+                      <div className="mt-3">
+                        <p className="text-sm text-green-700">Description</p>
+                        <p className="text-base text-green-800">{data.shop.description}</p>
                       </div>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Station</p>
-                      <p className="text-lg font-semibold text-gray-900">{data.license.stationName || data.vendor.stationName}</p>
-                    </div>
-                    {data.license.platformName && data.license.platformName !== 'N/A' && (
-                      <div>
-                        <p className="text-sm text-gray-600">Platform</p>
-                        <p className="text-lg font-semibold text-gray-900">{data.license.platformName}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Financial Information */}
-                  {(data.license.monthlyRent || data.license.securityDeposit) && (
+                  {/* Enhanced Financial Information */}
+                  {(data.financial || data.license.monthlyRent || data.license.securityDeposit) && (
                     <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                       <h4 className="text-sm font-semibold text-blue-900 mb-3">Financial Details</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {data.license.monthlyRent && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {(data.financial?.monthlyRent || data.license.monthlyRent) && (
                           <div>
                             <p className="text-sm text-blue-700">Monthly Rent</p>
-                            <p className="text-lg font-semibold text-blue-900">₹{data.license.monthlyRent.toLocaleString()}</p>
+                            <p className="text-lg font-semibold text-blue-900">₹{(data.financial?.monthlyRent || data.license.monthlyRent || 0).toLocaleString()}</p>
+                            {data.financial?.rentStatus && (
+                              <span className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${
+                                data.financial.rentStatus === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {data.financial.rentStatus}
+                              </span>
+                            )}
                           </div>
                         )}
-                        {data.license.securityDeposit && (
+                        {(data.financial?.securityDeposit || data.license.securityDeposit) && (
+                          <div>
+                            <p className="text-sm text-blue-700">Security Deposit</p>
+                            <p className="text-lg font-semibold text-blue-900">₹{(data.financial?.securityDeposit || data.license.securityDeposit || 0).toLocaleString()}</p>
+                            {data.financial?.depositStatus && (
+                              <span className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${
+                                data.financial.depositStatus === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {data.financial.depositStatus}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {data.financial?.proposedRent && (
+                          <div>
+                            <p className="text-sm text-blue-700">Proposed Rent</p>
+                            <p className="text-base text-blue-800">₹{data.financial.proposedRent.toLocaleString()}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bank Details (for reference) */}
+                  {data.vendor && (data.vendor.bankName || data.vendor.ifscCode) && (
+                    <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                      <h4 className="text-sm font-semibold text-purple-900 mb-3">Bank Details</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {data.vendor.bankName && data.vendor.bankName !== 'N/A' && (
+                          <div>
+                            <p className="text-sm text-purple-700">Bank Name</p>
+                            <p className="text-base text-purple-900">{data.vendor.bankName}</p>
+                          </div>
+                        )}
+                        {data.vendor.accountHolderName && data.vendor.accountHolderName !== 'N/A' && (
+                          <div>
+                            <p className="text-sm text-purple-700">Account Holder</p>
+                            <p className="text-base text-purple-900">{data.vendor.accountHolderName}</p>
+                          </div>
+                        )}
+                        {data.vendor.ifscCode && data.vendor.ifscCode !== 'N/A' && (
+                          <div>
+                            <p className="text-sm text-purple-700">IFSC Code</p>
+                            <p className="text-base text-purple-900">{data.vendor.ifscCode}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                           <div>
                             <p className="text-sm text-blue-700">Security Deposit</p>
                             <p className="text-lg font-semibold text-blue-900">₹{data.license.securityDeposit.toLocaleString()}</p>
@@ -241,11 +378,11 @@ export default function VerifyPage() {
                     </div>
                   </div>
 
-                  {/* Verification Status */}
+                  {/* Enhanced Verification Status */}
                   {data.verification && (
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <h4 className="text-sm font-semibold text-gray-900 mb-3">Verification Status</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <p className="text-sm text-gray-700">Documents Status</p>
                           <p className="text-base font-semibold text-green-600">✓ Verified</p>
@@ -256,6 +393,39 @@ export default function VerifyPage() {
                             <p className="text-base font-semibold text-gray-900">{formatDate(data.verification.verifiedAt)}</p>
                           </div>
                         )}
+                        {data.verification.complianceStatus && (
+                          <div>
+                            <p className="text-sm text-gray-700">Compliance</p>
+                            <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                              data.verification.complianceStatus === 'COMPLIANT' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {data.verification.complianceStatus}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Scan Information */}
+                  {data.scanInfo && (
+                    <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+                      <h4 className="text-sm font-semibold text-indigo-900 mb-3">Scan Information</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm text-indigo-700">Scanned At</p>
+                          <p className="text-base text-indigo-900">{formatDate(data.scanInfo.scannedAt)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-indigo-700">Data Format</p>
+                          <p className="text-base text-indigo-900">{data.scanInfo.dataFormat}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-indigo-700">Inspector</p>
+                          <p className="text-base text-indigo-900">{data.scanInfo.inspector}</p>
+                        </div>
                       </div>
                     </div>
                   )}

@@ -47,8 +47,17 @@ export async function GET(
     // Get Vendor profile for business details
     const Vendor = (await import('@/models/Vendor')).default;
     const vendorProfile = await Vendor.findOne({ userId: vendorUser._id }).lean();
+    
     const VendorBusiness = (await import('@/models/VendorBusiness')).default;
     const businessProfile = vendorProfile ? await VendorBusiness.findOne({ vendorId: vendorUser._id }).lean() : null;
+    
+    // Get vendor financial details
+    const VendorFinancial = (await import('@/models/VendorFinancial')).default;
+    const financialProfile = vendorProfile ? await VendorFinancial.findOne({ vendorId: vendorUser._id }).lean() : null;
+    
+    // Get vendor bank details
+    const VendorBank = (await import('@/models/VendorBank')).default;
+    const bankProfile = vendorProfile ? await VendorBank.findOne({ vendorId: vendorUser._id }).lean() : null;
 
     // Fetch documents for this vendor (using Vendor._id if exists)
     const documents = vendorProfile ? await Document.find({ vendorId: vendorProfile._id }) : [];
@@ -121,19 +130,70 @@ export async function GET(
         approvedAt: license.approvedAt,
       },
       vendor: vendorUser ? {
-        businessName: vendorProfile?.businessName || businessProfile?.businessName || 'N/A',
-        businessType: vendorProfile?.businessType || businessProfile?.businessCategory || 'N/A',
+        // Basic Information
         ownerName: vendorUser.name,
+        fullName: vendorProfile?.fullName || vendorUser.name,
         phone: vendorUser.phone,
         email: vendorUser.email,
+        
+        // Business Details
+        businessName: vendorProfile?.businessName || businessProfile?.businessName || 'N/A',
+        businessType: vendorProfile?.businessType || businessProfile?.businessCategory || 'N/A',
+        businessDescription: businessProfile?.description || 'N/A',
+        businessRegistration: businessProfile?.registrationNumber || 'N/A',
+        gstNumber: businessProfile?.gstNumber || financialProfile?.gstNumber || 'N/A',
+        panNumber: financialProfile?.panNumber || 'N/A',
+        
+        // Address Details
+        businessAddress: businessProfile?.address || vendorProfile?.address || 'N/A',
+        city: businessProfile?.city || vendorProfile?.city || 'N/A',
+        state: businessProfile?.state || vendorProfile?.state || 'N/A',
+        pincode: businessProfile?.pincode || vendorProfile?.pincode || 'N/A',
+        
+        // Bank Details (for verification)
+        bankName: bankProfile?.bankName || 'N/A',
+        accountHolderName: bankProfile?.accountHolderName || 'N/A',
+        ifscCode: bankProfile?.ifscCode || 'N/A',
+        
+        // Shop Location
         stationName,
         platformNumber: platformName,
+        
+        // Experience & Category
+        experienceYears: businessProfile?.experienceYears || 0,
+        previousExperience: businessProfile?.previousExperience || false,
+        category: businessProfile?.category || vendorProfile?.businessType || 'N/A',
       } : null,
+      shop: {
+        name: shopName,
+        id: shopId,
+        description: license.shopDescription || 'N/A',
+        location: {
+          station: stationName,
+          platform: platformName,
+          stationCode: license.stationCode || 'N/A',
+        }
+      },
+      financial: {
+        monthlyRent: license.monthlyRent || 0,
+        securityDeposit: license.securityDeposit || 0,
+        proposedRent: license.proposedRent || license.monthlyRent || 0,
+        agreedRent: license.agreedRent || license.monthlyRent || 0,
+        rentStatus: 'ACTIVE', // Since license is active
+        depositStatus: license.securityDeposit ? 'PAID' : 'PENDING',
+      },
       verification: {
         documentsVerified: true, // Since license exists, docs were verified
         verifiedAt: license.approvedAt,
         verifiedBy: 'Station Manager',
+        licenseActive: status === 'ACTIVE',
+        complianceStatus: license.complianceStatus || 'COMPLIANT',
       },
+      scanInfo: {
+        scannedAt: new Date().toISOString(),
+        dataFormat: license.qrCodeMetadata?.dataFormat || 'LICENSE_NUMBER_ONLY',
+        inspector: 'Field Inspector', // Can be customized based on auth
+      }
     });
   } catch (error) {
     console.error('Verify error:', error);
