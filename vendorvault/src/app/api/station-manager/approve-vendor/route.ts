@@ -157,6 +157,161 @@ export async function POST(request: NextRequest) {
       }
       await shopApplication.save();
 
+      // Create agreement and payments after approval
+      try {
+        const VendorAgreement = (await import('@/models/VendorAgreement')).default;
+        const VendorPayment = (await import('@/models/VendorPayment')).default;
+        const Platform = (await import('@/models/Platform')).default;
+
+        const safeStationId = shopApplication.stationId;
+        const safeShopId = shopApplication.shopId || String(shopApplication._id).slice(-6);
+        
+        const startDate = issuedAt;
+        const endDate = expiresAt;
+        const monthlyRent = shopApplication.finalAgreedRent || shopApplication.quotedRent || license.monthlyRent || 0;
+        const securityDepositAmount = shopApplication.finalSecurityDeposit || shopApplication.securityDeposit || license.securityDeposit || 0;
+        const durationMonths = expiryMonths && !isNaN(Number(expiryMonths)) ? Number(expiryMonths) : 12;
+
+        // Check if agreement already exists
+        let agreement = await VendorAgreement.findOne({ applicationId: shopApplication._id });
+        
+        if (!agreement) {
+          const agreementNumber = `AGR-${station.stationCode}-${new Date().getFullYear()}-${String(shopApplication._id).slice(-6)}`;
+
+          agreement = await VendorAgreement.create({
+            vendorId: shopApplication.vendorId,
+            applicationId: shopApplication._id,
+            stationId: safeStationId,
+            shopId: safeShopId,
+            agreementNumber,
+            startDate,
+            endDate,
+            duration: durationMonths,
+            monthlyRent,
+            securityDeposit: securityDepositAmount,
+            securityDepositPaid: false,
+            status: 'ACTIVE',
+            licenseNumber: licenseNumber,
+            licenseExpiryDate: endDate,
+            createdBy: new mongoose.Types.ObjectId(auth.userId),
+            approvedBy: new mongoose.Types.ObjectId(auth.userId),
+            approvedAt: new Date(),
+          });
+          
+          console.log('✅ Created agreement:', agreement.agreementNumber);
+        }
+
+        // Create security deposit payment if needed
+        if (securityDepositAmount > 0) {
+          const depExists = await VendorPayment.findOne({ 
+            applicationId: shopApplication._id, 
+            paymentType: 'SECURITY_DEPOSIT' 
+          });
+          
+          if (!depExists) {
+            await VendorPayment.create({
+              vendorId: shopApplication.vendorId,
+              applicationId: shopApplication._id,
+              stationId: safeStationId,
+              shopId: safeShopId,
+              paymentType: 'SECURITY_DEPOSIT',
+              dueDate: new Date(),
+              amount: securityDepositAmount,
+              paidAmount: 0,
+              balanceAmount: securityDepositAmount,
+              status: 'PENDING',
+              createdBy: new mongoose.Types.ObjectId(auth.userId),
+            });
+            console.log('✅ Created security deposit payment');
+          }
+        }
+
+        // Create first month rent payment
+        const rentExists = await VendorPayment.findOne({ 
+          applicationId: shopApplication._id, 
+          paymentType: 'RENT' 
+        });
+        
+        if (!rentExists) {
+          const billingMonth = `${issuedAt.getFullYear()}-${String(issuedAt.getMonth() + 1).padStart(2, '0')}`;
+          
+          await VendorPayment.create({
+            vendorId: shopApplication.vendorId,
+            applicationId: shopApplication._id,
+            stationId: safeStationId,
+            shopId: safeShopId,
+            paymentType: 'RENT',
+            dueDate: issuedAt,
+            amount: monthlyRent,
+            paidAmount: 0,
+            balanceAmount: monthlyRent,
+            status: monthlyRent > 0 ? 'PENDING' : 'PAID',
+            billingMonth,
+            billingYear: issuedAt.getFullYear(),
+            createdBy: new mongoose.Types.ObjectId(auth.userId),
+          });
+          console.log('✅ Created rent payment');
+        }
+
+        // Update Platform shop occupancy status
+        let platform: any = null;
+        
+        // Try multiple matching strategies
+        try {
+          if (mongoose.Types.ObjectId.isValid(safeShopId)) {
+            platform = await Platform.findOne({ 
+              stationId: shopApplication.stationId, 
+              'shops._id': new mongoose.Types.ObjectId(safeShopId) 
+            });
+          }
+        } catch (e) {
+          // Not a valid ObjectId
+        }
+        
+        if (!platform) {
+          platform = await Platform.findOne({ 
+            stationId: shopApplication.stationId, 
+            'shops.shopNumber': String(safeShopId) 
+          });
+        }
+        
+        if (platform) {
+          let shopUpdated = false;
+          for (let i = 0; i < platform.shops.length; i++) {
+            const shop = platform.shops[i];
+            const shopMatches = (
+              String(shop._id) === String(safeShopId) ||
+              String(shop.shopNumber) === String(safeShopId)
+            );
+            
+            if (shopMatches) {
+              platform.shops[i].status = 'OCCUPIED';
+              platform.shops[i].vendorId = shopApplication.vendorId;
+              platform.shops[i].businessName = shopApplication.shopName;
+              platform.shops[i].monthlyRent = monthlyRent;
+              platform.shops[i].occupiedSince = issuedAt;
+              platform.shops[i].leaseEndDate = expiresAt;
+              shopUpdated = true;
+              break;
+            }
+          }
+          
+          if (shopUpdated) {
+            platform.updateShopCounts();
+            await platform.save();
+            console.log('✅ Updated platform shop status to OCCUPIED');
+          } else {
+            console.warn('⚠️ Shop not found in platform. ShopId:', safeShopId);
+          }
+        } else {
+          console.warn('⚠️ Platform not found for stationId:', shopApplication.stationId);
+        }
+
+      } catch (e) {
+        console.error('❌ Failed to create agreement/payments:', e);
+        // Don't fail the approval
+      }
+
       // Update shop allocation in StationLayout
       if (license.shopId) {
         try {

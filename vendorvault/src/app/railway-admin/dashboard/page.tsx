@@ -9,7 +9,6 @@ import { StatsOverview } from '@/components/railway-admin/StatsOverview';
 import { UsersManagement } from '@/components/railway-admin/UsersManagement';
 import { StationsManagement } from '@/components/railway-admin/StationsManagement';
 import { ReferenceStationsManagement } from '@/components/railway-admin/ReferenceStationsManagement';
-import { PlatformsManagement } from '@/components/railway-admin/PlatformsManagement';
 import { DocumentsModal } from '@/components/railway-admin/DocumentsModal';
 import toast from 'react-hot-toast';
 
@@ -24,7 +23,6 @@ interface AdminStats {
   totalStations: number;
   pendingStations: number;
   totalReferenceStations: number;
-  totalPlatforms: number;
   pendingDocuments: number;
 }
 
@@ -81,21 +79,9 @@ interface Station {
   createdAt: string;
 }
 
-interface Platform {
-  _id: string;
-  platformNumber: number;
-  platformType: string;
-  platformLength: number;
-  platformWidth: number;
-  stationId: {
-    stationName: string;
-    stationCode: string;
-  };
-}
-
 export default function RailwayAdminDashboard() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'stations' | 'referenceStations' | 'platforms'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'stations' | 'referenceStations'>('overview');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalStationManagers: 0,
@@ -106,7 +92,6 @@ export default function RailwayAdminDashboard() {
     totalStations: 0,
     pendingStations: 0,
     totalReferenceStations: 0,
-    totalPlatforms: 0,
     pendingDocuments: 0,
   });
 
@@ -114,7 +99,6 @@ export default function RailwayAdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
   const [referenceStations, setReferenceStations] = useState<ReferenceStation[]>([]);
-  const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Document modal
@@ -155,12 +139,6 @@ export default function RailwayAdminDashboard() {
         if (refStationsRes.ok) {
           const data = await refStationsRes.json();
           setReferenceStations(data.stations);
-        }
-      } else if (activeTab === 'platforms') {
-        const platformsRes = await fetch('/api/railway-admin/platforms');
-        if (platformsRes.ok) {
-          const data = await platformsRes.json();
-          setPlatforms(data.platforms);
         }
       }
     } catch (error) {
@@ -230,7 +208,6 @@ export default function RailwayAdminDashboard() {
                 { id: 'users', label: 'Users' },
                 { id: 'stations', label: 'Station Applications' },
                 { id: 'referenceStations', label: 'Reference Stations' },
-                { id: 'platforms', label: 'Platforms' },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -278,9 +255,6 @@ export default function RailwayAdminDashboard() {
                   stations={referenceStations} 
                   onRefresh={fetchDashboardData}
                 />
-              )}
-              {activeTab === 'platforms' && (
-                <PlatformsManagement platforms={platforms} />
               )}
             </>
           )}

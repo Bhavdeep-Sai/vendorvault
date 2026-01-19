@@ -25,7 +25,21 @@ interface Platform {
   occupiedShops: number;
   availableShops: number;
   shops: Shop[];
-  dimensions: { length: number; width: number };
+  financialMetrics?: {
+    totalRevenue: number;
+    totalBalance: number;
+    overdueAmount: number;
+    occupancy: number;
+  };
+}
+
+interface Summary {
+  totalRevenue: number;
+  totalBalance: number;
+  totalOverdue: number;
+  totalPlatforms: number;
+  totalShops: number;
+  occupiedShops: number;
 }
 
 export default function PlatformManagementPage() {
@@ -33,6 +47,7 @@ export default function PlatformManagementPage() {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
   const [loading, setLoading] = useState(true);
   const [stationInfo, setStationInfo] = useState<any>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -41,15 +56,16 @@ export default function PlatformManagementPage() {
 
   const fetchPlatforms = async () => {
     try {
-      const res = await fetch('/api/station-manager/platforms', {
+      const res = await fetch('/api/station-manager/platforms/live', {
         credentials: 'same-origin',
       });
       const data = await res.json();
 
       if (data.success) {
-        setPlatforms(data.platforms);
+        setPlatforms(data.platforms || []);
         setStationInfo(data.stationInfo);
-        if (data.platforms.length > 0) {
+        setSummary(data.summary);
+        if (data.platforms && data.platforms.length > 0) {
           setSelectedPlatform(data.platforms[0]);
         }
       } else {
@@ -63,26 +79,12 @@ export default function PlatformManagementPage() {
     }
   };
 
-  const getShopColor = (status: string) => {
-    switch (status) {
-      case 'OCCUPIED':
-        return 'bg-red-500 border-red-600';
-      case 'AVAILABLE':
-        return 'bg-green-500 border-green-600';
-      case 'RESERVED':
-        return 'bg-yellow-500 border-yellow-600';
-      case 'MAINTENANCE':
-        return 'bg-gray-500 border-gray-600';
-      default:
-        return 'bg-blue-500 border-blue-600';
-    }
-  };
-
-  const getGridSize = (platform: Platform) => {
-    // Calculate grid size based on platform dimensions
-    const maxX = Math.max(...platform.shops.map(s => s.position.x + s.size.width), 10);
-    const maxY = Math.max(...platform.shops.map(s => s.position.y + s.size.height), 3);
-    return { cols: maxX, rows: maxY };
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount);
   };
 
   if (loading) {
@@ -109,7 +111,7 @@ export default function PlatformManagementPage() {
                 <h1 className="text-2xl font-bold text-gray-900">Platform Management</h1>
                 {stationInfo && (
                   <p className="text-sm text-gray-600 mt-1">
-                    {stationInfo.stationName} ({stationInfo.stationCode}) - {stationInfo.totalPlatforms} Platforms
+                    {stationInfo.stationName} ({stationInfo.stationCode})
                   </p>
                 )}
               </div>
@@ -124,13 +126,107 @@ export default function PlatformManagementPage() {
         </header>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Platform Selection & Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            {/* Platform Selector */}
-            <div className="md:col-span-4">
-              <div className="bg-white rounded-lg shadow p-6">
+          {!platforms || platforms.length === 0 ? (
+            <div className="bg-white rounded-lg shadow p-8 sm:p-12 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full mb-4">
+                <svg className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No Platforms Configured</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4 max-w-md mx-auto">
+                Platform layouts have not been created yet for {stationInfo?.stationName || 'this station'}.
+              </p>
+              <p className="text-xs sm:text-sm text-gray-500 max-w-lg mx-auto">
+                Go to <strong>Layout Editor</strong> to create platforms and configure shops. Once saved, they will automatically appear here.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Station-wide Financial Summary */}
+              {summary && (
+                <div className="mb-6">
+                  <h2 className="text-lg font-bold text-gray-900 mb-4">Station Financial Overview</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg shadow-lg p-4 text-white">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-[10px] opacity-90 uppercase truncate">Revenue</p>
+                          <p className="text-lg font-bold mt-1 truncate">{formatCurrency(summary.totalRevenue)}</p>
+                        </div>
+                        <svg className="w-6 h-6 opacity-80 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg shadow-lg p-4 text-white">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-[10px] opacity-90 uppercase truncate">Pending</p>
+                          <p className="text-lg font-bold mt-1 truncate">{formatCurrency(summary.totalBalance)}</p>
+                        </div>
+                        <svg className="w-6 h-6 opacity-80 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-rose-500 to-red-600 rounded-lg shadow-lg p-4 text-white">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-[10px] opacity-90 uppercase truncate">Overdue</p>
+                          <p className="text-lg font-bold mt-1 truncate">{formatCurrency(summary.totalOverdue)}</p>
+                        </div>
+                        <svg className="w-6 h-6 opacity-80 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-lg p-4 text-white">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-[10px] opacity-90 uppercase truncate">Platforms</p>
+                          <p className="text-lg font-bold mt-1">{summary.totalPlatforms}</p>
+                        </div>
+                        <svg className="w-6 h-6 opacity-80 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg shadow-lg p-4 text-white">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-[10px] opacity-90 uppercase truncate">Total Shops</p>
+                          <p className="text-lg font-bold mt-1">{summary.totalShops}</p>
+                        </div>
+                        <svg className="w-6 h-6 opacity-80 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-lg p-4 text-white">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-[10px] opacity-90 uppercase truncate">Occupied</p>
+                          <p className="text-lg font-bold mt-1">{summary.occupiedShops}</p>
+                        </div>
+                        <svg className="w-6 h-6 opacity-80 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Platform Selector */}
+              <div className="bg-white rounded-lg shadow p-6 mb-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Platform</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {platforms.map((platform) => (
                     <button
                       key={platform._id}
@@ -142,252 +238,196 @@ export default function PlatformManagementPage() {
                       }`}
                     >
                       <div className="text-sm font-medium text-gray-900">
-                        Platform {platform.platformNumber}
+                        P{platform.platformNumber}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {platform.occupiedShops}/{platform.totalShops} Occupied
+                        {platform.occupiedShops}/{platform.totalShops}
                       </div>
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
 
-            {/* Stats Cards */}
-            {selectedPlatform && (
-              <>
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Total Shops</p>
-                      <p className="text-3xl font-bold text-gray-900">{selectedPlatform.totalShops}</p>
-                    </div>
-                    <div className="p-3 bg-blue-100 rounded-full">
-                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Occupied</p>
-                      <p className="text-3xl font-bold text-red-600">{selectedPlatform.occupiedShops}</p>
-                    </div>
-                    <div className="p-3 bg-red-100 rounded-full">
-                      <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Available</p>
-                      <p className="text-3xl font-bold text-green-600">{selectedPlatform.availableShops}</p>
-                    </div>
-                    <div className="p-3 bg-green-100 rounded-full">
-                      <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Occupancy Rate</p>
-                      <p className="text-3xl font-bold text-indigo-600">
-                        {selectedPlatform.totalShops > 0
-                          ? Math.round((selectedPlatform.occupiedShops / selectedPlatform.totalShops) * 100)
-                          : 0}%
-                      </p>
-                    </div>
-                    <div className="p-3 bg-indigo-100 rounded-full">
-                      <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Platform Visual Layout */}
-          {selectedPlatform && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Platform {selectedPlatform.platformNumber} - {selectedPlatform.platformName}
-                </h2>
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-green-500 border-2 border-green-600 rounded"></div>
-                    <span className="text-sm text-gray-600">Available</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-red-500 border-2 border-red-600 rounded"></div>
-                    <span className="text-sm text-gray-600">Occupied</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-yellow-500 border-2 border-yellow-600 rounded"></div>
-                    <span className="text-sm text-gray-600">Reserved</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-gray-500 border-2 border-gray-600 rounded"></div>
-                    <span className="text-sm text-gray-600">Maintenance</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Platform Layout Grid */}
-              <div className="bg-gray-100 p-8 rounded-lg overflow-x-auto">
-                <div className="relative" style={{ minWidth: '800px' }}>
-                  {/* Platform Base (Railway Track) */}
-                  <div className="mb-4 text-center">
-                    <div className="inline-block bg-gray-800 text-white px-4 py-2 rounded text-sm font-medium">
-                      ← Railway Track →
-                    </div>
-                  </div>
-
-                  {/* Platform Rectangle */}
-                  <div 
-                    className="relative border-4 border-gray-400 bg-gray-200 rounded-lg"
-                    style={{ 
-                      height: `${getGridSize(selectedPlatform).rows * 100 + 40}px`,
-                      minHeight: '300px'
-                    }}
-                  >
-                    {/* Platform Label */}
-                    <div className="absolute top-2 left-2 bg-white px-3 py-1 rounded shadow text-sm font-semibold text-gray-700">
-                      Platform {selectedPlatform.platformNumber}
-                    </div>
-
-                    {/* Dimension Labels */}
-                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs text-gray-600">
-                      {selectedPlatform.dimensions.length}m length
-                    </div>
-                    <div className="absolute top-1/2 -left-16 transform -translate-y-1/2 -rotate-90 text-xs text-gray-600">
-                      {selectedPlatform.dimensions.width}m width
-                    </div>
-
-                    {/* Shop Blocks */}
-                    {selectedPlatform.shops.map((shop) => (
-                      <div
-                        key={shop.shopNumber}
-                        className={`absolute ${getShopColor(shop.status)} border-2 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all group`}
-                        style={{
-                          left: `${shop.position.x * 80 + 20}px`,
-                          top: `${shop.position.y * 100 + 40}px`,
-                          width: `${shop.size.width * 70}px`,
-                          height: `${shop.size.height * 90}px`,
-                        }}
-                        title={`${shop.shopNumber} - ${shop.status}${shop.vendorName ? ` - ${shop.vendorName}` : ''}`}
-                      >
-                        <div className="p-2 h-full flex flex-col justify-between">
-                          <div className="text-white text-xs font-bold">
-                            {shop.shopNumber}
-                          </div>
-                          {shop.businessName && (
-                            <div className="text-white text-[10px] truncate">
-                              {shop.businessName}
-                            </div>
-                          )}
-                          <div className="text-white text-[9px] opacity-90">
-                            {shop.stallType}
-                          </div>
+              {/* Platform Stats & Financial Metrics */}
+              {selectedPlatform && (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-white rounded-lg shadow p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-600">Total Shops</p>
+                          <p className="text-2xl font-bold text-gray-900">{selectedPlatform.totalShops}</p>
                         </div>
+                        <div className="p-2 bg-blue-100 rounded-full">
+                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
 
-                        {/* Tooltip on Hover */}
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block">
-                          <div className="bg-gray-900 text-white text-xs rounded py-2 px-3 whitespace-nowrap shadow-lg">
-                            <div className="font-semibold">{shop.shopNumber}</div>
-                            <div>Status: {shop.status}</div>
-                            {shop.vendorName && <div>Vendor: {shop.vendorName}</div>}
-                            {shop.businessName && <div>Business: {shop.businessName}</div>}
-                            {shop.monthlyRent && <div>Rent: ₹{shop.monthlyRent}/month</div>}
+                    <div className="bg-white rounded-lg shadow p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-600">Occupied</p>
+                          <p className="text-2xl font-bold text-red-600">{selectedPlatform.occupiedShops}</p>
+                        </div>
+                        <div className="p-2 bg-red-100 rounded-full">
+                          <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-600">Available</p>
+                          <p className="text-2xl font-bold text-green-600">{selectedPlatform.availableShops}</p>
+                        </div>
+                        <div className="p-2 bg-green-100 rounded-full">
+                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-600">Occupancy</p>
+                          <p className="text-2xl font-bold text-indigo-600">
+                            {selectedPlatform.totalShops > 0
+                              ? Math.round((selectedPlatform.occupiedShops / selectedPlatform.totalShops) * 100)
+                              : 0}%
+                          </p>
+                        </div>
+                        <div className="p-2 bg-indigo-100 rounded-full">
+                          <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Financial Metrics */}
+                  {selectedPlatform.financialMetrics && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm opacity-90">Revenue Collected</p>
+                            <p className="text-3xl font-bold mt-1">
+                              {formatCurrency(selectedPlatform.financialMetrics.totalRevenue)}
+                            </p>
+                          </div>
+                          <div className="p-3 bg-white bg-opacity-20 rounded-full">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Platform End Label */}
-                  <div className="mt-4 text-center text-sm text-gray-600">
-                    Platform End
-                  </div>
-                </div>
-              </div>
+                      <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg shadow-lg p-6 text-white">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm opacity-90">Pending Payments</p>
+                            <p className="text-3xl font-bold mt-1">
+                              {formatCurrency(selectedPlatform.financialMetrics.totalBalance)}
+                            </p>
+                          </div>
+                          <div className="p-3 bg-white bg-opacity-20 rounded-full">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
 
-              {/* Shop List Table */}
-              <div className="mt-8">
-                <h3 className="text-md font-semibold text-gray-900 mb-4">Shop Details</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shop #</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendor</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Business</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rent</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {selectedPlatform.shops.map((shop) => (
-                        <tr key={shop.shopNumber} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {shop.shopNumber}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              shop.status === 'OCCUPIED' ? 'bg-red-100 text-red-800' :
-                              shop.status === 'AVAILABLE' ? 'bg-green-100 text-green-800' :
-                              shop.status === 'RESERVED' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {shop.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {shop.vendorName || '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {shop.businessName || '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {shop.stallType || '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {shop.monthlyRent ? `₹${shop.monthlyRent}` : '-'}
-                          </td>
+                      <div className={`bg-gradient-to-br ${
+                        selectedPlatform.financialMetrics.overdueAmount > 0 
+                          ? 'from-red-500 to-red-600' 
+                          : 'from-gray-400 to-gray-500'
+                      } rounded-lg shadow-lg p-6 text-white`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm opacity-90">Overdue Amount</p>
+                            <p className="text-3xl font-bold mt-1">
+                              {formatCurrency(selectedPlatform.financialMetrics.overdueAmount)}
+                            </p>
+                          </div>
+                          <div className="p-3 bg-white bg-opacity-20 rounded-full">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Shop Details Table */}
+              {selectedPlatform && (
+                <div className="bg-white rounded-lg shadow overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Platform {selectedPlatform.platformNumber} - Shop Details
+                    </h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shop #</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendor</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Business</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monthly Rent</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {selectedPlatform.shops.map((shop) => (
+                          <tr key={shop.shopNumber} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {shop.shopNumber}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                shop.status === 'OCCUPIED' ? 'bg-red-100 text-red-800' :
+                                shop.status === 'AVAILABLE' ? 'bg-green-100 text-green-800' :
+                                shop.status === 'RESERVED' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {shop.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {shop.vendorName || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {shop.businessName || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {shop.stallType || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {shop.monthlyRent ? `₹${shop.monthlyRent.toLocaleString('en-IN')}` : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Empty State */}
-          {platforms.length === 0 && (
-            <div className="bg-white rounded-lg shadow p-12 text-center">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No platforms configured</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Contact the railway administrator to set up platforms for your station.
-              </p>
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>

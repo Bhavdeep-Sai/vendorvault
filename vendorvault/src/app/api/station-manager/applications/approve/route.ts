@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       }
 
       // validate optional input values
-      const months = parseInt(String(expiryMonths || '0'), 10);
+      const months = parseInt(String(expiryMonths || '12'), 10);
       const deposit = typeof securityDeposit === 'number' ? securityDeposit : (securityDeposit ? Number(securityDeposit) : undefined);
 
       if (expiryMonths !== undefined && (isNaN(months) || months <= 0)) {
@@ -146,6 +146,186 @@ export async function POST(request: NextRequest) {
         console.error('Notification error:', notifError);
       }
 
+      // Save application before creating related records
+      await application.save();
+
+      // After approval, create agreement and initial payment records
+      try {
+        // Determine safe values for shopId and stationId
+        const safeStationId = application.stationId;
+        const safeShopId = application.shopId || String(application._id).slice(-6);
+        
+        if (!safeStationId) {
+          console.error('❌ Cannot create agreement: missing stationId for application', application._id);
+          throw new Error('Missing stationId - agreement creation failed');
+        }
+
+        // Determine agreement dates
+        const startDate = application.licenseIssuedAt || new Date();
+        const endDate = application.licenseExpiresAt || ((): Date => {
+          const d = new Date(startDate);
+          d.setMonth(d.getMonth() + months);
+          return d;
+        })();
+
+        const monthlyRent = application.finalAgreedRent || application.quotedRent || 0;
+        const securityDepositAmount = application.finalSecurityDeposit || application.securityDeposit || 0;
+        const duration = months || 12;
+
+        // Check if agreement already exists
+        let agreement = await VendorAgreement.findOne({ applicationId: application._id });
+        
+        if (!agreement) {
+          // Get station code for friendly agreement number
+          let stationCode = 'UNK';
+          try {
+            const station = await Station.findById(application.stationId);
+            if (station?.stationCode) stationCode = station.stationCode;
+          } catch (e) {
+            console.warn('Could not fetch station code:', e);
+          }
+
+          const agreementNumber = `AGR-${stationCode}-${new Date().getFullYear()}-${String(application._id).slice(-6)}`;
+
+          agreement = await VendorAgreement.create({
+            vendorId: application.vendorId,
+            applicationId: application._id,
+            stationId: safeStationId,
+            shopId: safeShopId,
+            agreementNumber,
+            startDate,
+            endDate,
+            duration,
+            monthlyRent,
+            securityDeposit: securityDepositAmount,
+            securityDepositPaid: false,
+            status: 'ACTIVE',
+            licenseNumber: application.licenseNumber || `LIC-${Date.now()}`,
+            licenseExpiryDate: endDate,
+            createdBy: new mongoose.Types.ObjectId(authResult.user.id),
+            approvedBy: new mongoose.Types.ObjectId(authResult.user.id),
+            approvedAt: new Date(),
+          });
+          
+          console.log('✅ Created agreement:', agreement.agreementNumber);
+        } else {
+          console.log('ℹ️ Agreement already exists:', agreement.agreementNumber);
+        }
+
+        // Create security deposit payment if needed
+        if (securityDepositAmount > 0) {
+          const depExists = await VendorPayment.findOne({ 
+            applicationId: application._id, 
+            paymentType: 'SECURITY_DEPOSIT' 
+          });
+          
+          if (!depExists) {
+            await VendorPayment.create({
+              vendorId: application.vendorId,
+              applicationId: application._id,
+              stationId: safeStationId,
+              shopId: safeShopId,
+              paymentType: 'SECURITY_DEPOSIT',
+              dueDate: new Date(),
+              amount: securityDepositAmount,
+              paidAmount: 0,
+              balanceAmount: securityDepositAmount,
+              status: 'PENDING',
+              createdBy: new mongoose.Types.ObjectId(authResult.user.id),
+            });
+            console.log('✅ Created security deposit payment');
+          }
+        }
+
+        // Create first month rent payment
+        const rentExists = await VendorPayment.findOne({ 
+          applicationId: application._id, 
+          paymentType: 'RENT' 
+        });
+        
+        if (!rentExists) {
+          const rentDueDate = application.licenseIssuedAt || new Date();
+          const billingMonth = `${rentDueDate.getFullYear()}-${String(rentDueDate.getMonth() + 1).padStart(2, '0')}`;
+          
+          await VendorPayment.create({
+            vendorId: application.vendorId,
+            applicationId: application._id,
+            stationId: safeStationId,
+            shopId: safeShopId,
+            paymentType: 'RENT',
+            dueDate: rentDueDate,
+            amount: monthlyRent,
+            paidAmount: 0,
+            balanceAmount: monthlyRent,
+            status: monthlyRent > 0 ? 'PENDING' : 'PAID',
+            billingMonth,
+            billingYear: rentDueDate.getFullYear(),
+            createdBy: new mongoose.Types.ObjectId(authResult.user.id),
+          });
+          console.log('✅ Created rent payment');
+        }
+
+        // Update StationLayout visual representation (single source of truth)
+        try {
+          const layout = await StationLayout.findOne({ stationId: application.stationId });
+          if (layout && Array.isArray(layout.platforms)) {
+            let layoutChanged = false;
+            
+            platformLoop: for (const plat of layout.platforms) {
+              if (!Array.isArray(plat.shops)) continue;
+              
+              for (const shop of plat.shops) {
+                // Build list of possible shop identifiers
+                const shopIdentifiers = [
+                  shop._id && String(shop._id),
+                  shop.id && String(shop.id),
+                  shop.shopId && String(shop.shopId),
+                  shop.shopNumber && String(shop.shopNumber),
+                ].filter(Boolean);
+                
+                if (shopIdentifiers.includes(String(safeShopId))) {
+                  shop.isAllocated = true;
+                  shop.vendorId = String(application.vendorId);
+                  shop.rent = monthlyRent;
+                  shop.shopName = application.shopName || '';
+                  shop.leaseEndDate = endDate;
+                  layoutChanged = true;
+                  console.log(`✅ Allocated shop ${safeShopId} to vendor ${application.vendorId}`);
+                  break platformLoop;
+                }
+              }
+            }
+            
+            if (layoutChanged) {
+              await layout.save();
+              console.log('✅ Updated StationLayout allocation - this is the single source of truth');
+            } else {
+              console.warn('⚠️ Shop not found in StationLayout. ShopId:', safeShopId);
+            }
+          } else {
+            console.warn('⚠️ StationLayout not found for stationId:', application.stationId);
+          }
+        } catch (e) {
+          console.error('❌ Failed to update StationLayout:', e);
+        }
+
+      } catch (e) {
+        console.error('❌ CRITICAL: Failed to create agreement/payments after approval:', e);
+        // Don't fail the entire approval, but log prominently
+        return NextResponse.json({
+          success: true,
+          warning: 'Application approved but agreement/payment setup encountered errors. Please check manually.',
+          application,
+          error: e instanceof Error ? e.message : 'Unknown error'
+        }, { status: 200 });
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        message: `Application approved successfully`,
+        application 
+      });
+
     } else if (action === 'REJECTED') {
       if (!rejectionReason) {
         return NextResponse.json({ error: 'Rejection reason is required' }, { status: 400 });
@@ -176,205 +356,17 @@ export async function POST(request: NextRequest) {
       } catch (notifError) {
         console.error('Notification error:', notifError);
       }
+      
+      await application.save();
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: `Application rejected`,
+        application 
+      });
     } else {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
-
-    await application.save();
-
-    // After approval, create agreement and initial payment records (best-effort)
-    try {
-      // Avoid creating duplicates if an agreement already exists for this application
-      let existingAgreement = await VendorAgreement.findOne({ applicationId: application._id });
-      let agreementCreated = false;
-      if (!existingAgreement) {
-        // Ensure required fields exist, provide conservative fallbacks to avoid validation errors
-        const safeStationId = application.stationId || null;
-        const safeShopId = application.shopId || application.shopNumber || String(application._id).slice(-6);
-        if (!safeStationId) {
-          console.warn('Skipping agreement creation: missing stationId for application', application._id);
-        } else {
-        // Determine agreement dates
-        const startDate = application.licenseIssuedAt || new Date();
-        const endDate = application.licenseExpiresAt || ((): Date => {
-          const d = new Date(startDate);
-          d.setMonth(d.getMonth() + (months && months > 0 ? months : 12));
-          return d;
-        })();
-
-        // Get station code for friendly agreement number (best-effort)
-        let stationCode = 'UNK';
-        try {
-          const station = await Station.findById(application.stationId).select('stationCode').lean();
-          if (station?.stationCode) stationCode = station.stationCode;
-        } catch (e) {}
-
-        const agreementNumber = `AGR-${stationCode}-${new Date().getFullYear()}-${String(application._id).slice(-6)}`;
-
-        const monthlyRent = application.finalAgreedRent || application.quotedRent || 0;
-        const securityDeposit = application.finalSecurityDeposit || application.securityDeposit || 0;
-        const duration = months && months > 0 ? months : 12;
-
-          const agreement = await VendorAgreement.create({
-            vendorId: application.vendorId,
-            applicationId: application._id,
-            stationId: safeStationId,
-            shopId: safeShopId,
-            agreementNumber,
-            startDate,
-            endDate,
-            duration,
-            monthlyRent,
-            securityDeposit,
-            securityDepositPaid: false,
-            status: 'ACTIVE',
-            licenseNumber: application.licenseNumber || application.licenseNumber,
-            licenseExpiryDate: endDate,
-            createdBy: new mongoose.Types.ObjectId(authResult.user.id),
-            approvedBy: new mongoose.Types.ObjectId(authResult.user.id),
-            approvedAt: new Date(),
-        });
-
-            // Create payment for security deposit (due immediately)
-          agreementCreated = true;
-          existingAgreement = agreement;
-        }
-
-        // Use the canonical agreement (existing or newly created) for subsequent updates
-        const agr = existingAgreement;
-
-        // Create or ensure payments exist (idempotent)
-        try {
-          // Security deposit payment
-          if ((agr.securityDeposit || application.finalSecurityDeposit || application.securityDeposit || 0) > 0) {
-            const depExists = await VendorPayment.findOne({ applicationId: application._id, paymentType: 'SECURITY_DEPOSIT' });
-            if (!depExists) {
-              await VendorPayment.create({
-                vendorId: application.vendorId,
-                applicationId: application._id,
-                stationId: safeStationId,
-                shopId: agr.shopId || safeShopId,
-                paymentType: 'SECURITY_DEPOSIT',
-                dueDate: new Date(),
-                amount: agr.securityDeposit || application.finalSecurityDeposit || application.securityDeposit || 0,
-                paidAmount: 0,
-                balanceAmount: agr.securityDeposit || application.finalSecurityDeposit || application.securityDeposit || 0,
-                status: 'PENDING',
-                createdBy: new mongoose.Types.ObjectId(authResult.user.id),
-              });
-            }
-          }
-
-          // Rent payment (first month) - ensure billingMonth/billingYear set so analytics can pick it up
-          const rentExists = await VendorPayment.findOne({ applicationId: application._id, paymentType: 'RENT' });
-          if (!rentExists) {
-            const rentDueDate = application.licenseIssuedAt || new Date();
-            const billingMonth = `${rentDueDate.getFullYear()}-${String(rentDueDate.getMonth() + 1).padStart(2, '0')}`;
-            await VendorPayment.create({
-              vendorId: application.vendorId,
-              applicationId: application._id,
-              stationId: safeStationId,
-              shopId: agr.shopId || safeShopId,
-              paymentType: 'RENT',
-              dueDate: rentDueDate,
-              amount: agr.monthlyRent || application.finalAgreedRent || application.quotedRent || 0,
-              paidAmount: 0,
-              balanceAmount: agr.monthlyRent || application.finalAgreedRent || application.quotedRent || 0,
-              status: agr.monthlyRent > 0 ? 'PENDING' : 'PAID',
-              billingMonth,
-              billingYear: rentDueDate.getFullYear(),
-              createdBy: new mongoose.Types.ObjectId(authResult.user.id),
-            });
-          }
-        } catch (e) {
-          console.error('Failed to ensure payments for application', application._id, e);
-        }
-
-        // Update Platform/Shop occupancy status
-        try {
-          // platform shops store shopNumber which may equal application.shopId
-          const Platform = (await import('@/models/Platform')).default;
-          // Try multiple strategies to find the platform/shop:
-          // 1) Match shops._id by ObjectId
-          // 2) Match shops.shopNumber by string
-          // 3) Fallback to matching shops.shopNumber loosely
-          let platform: any = null;
-                try {
-                  platform = await Platform.findOne({ stationId: application.stationId, 'shops._id': new mongoose.Types.ObjectId(String(application.shopId)) });
-                } catch (e) {
-                  // ignore invalid ObjectId
-                }
-                if (!platform) {
-                  platform = await Platform.findOne({ stationId: application.stationId, 'shops.shopNumber': String(application.shopId) });
-                }
-                if (!platform) {
-                  platform = await Platform.findOne({ stationId: application.stationId, 'shops.shopNumber': application.shopId });
-                }
-          if (platform) {
-            // find the shop entry and update using agr.shopId fallback
-            const matchId = agr && agr.shopId ? String(agr.shopId) : String(application.shopId || safeShopId);
-            const idx = platform.shops.findIndex((s: any) => String(s._id) === matchId || String(s.shopNumber) === matchId || String(s.shopId) === matchId || String(s.id) === matchId);
-            if (idx !== -1) {
-              platform.shops[idx].status = 'OCCUPIED';
-              platform.shops[idx].vendorId = application.vendorId;
-              platform.shops[idx].vendorName = undefined;
-              platform.shops[idx].occupiedSince = application.licenseIssuedAt || new Date();
-              platform.shops[idx].leaseEndDate = application.licenseExpiresAt || null;
-              platform.updateShopCounts();
-              await platform.save();
-            }
-          }
-        } catch (e) {
-          console.error('Failed to update platform/shop occupancy for application', application._id, e);
-        }
-
-        // Also update StationLayout (visual layout) to mark the shop zone as allocated
-        try {
-          const layout = await StationLayout.findOne({ stationId: application.stationId });
-          if (layout && Array.isArray(layout.platforms)) {
-            let layoutChanged = false;
-            for (const plat of layout.platforms) {
-              if (!Array.isArray(plat.shops)) continue;
-              for (const s of plat.shops) {
-                const candidates = [];
-                if (s._id) candidates.push(String(s._id));
-                if (s.id) candidates.push(String(s.id));
-                if (s.shopId) candidates.push(String(s.shopId));
-                if (s.shopNumber) candidates.push(String(s.shopNumber));
-                if (candidates.includes(String(safeShopId))) {
-                  // mark allocated until agreement endDate
-                  s.isAllocated = true;
-                  s.vendorId = String(application.vendorId);
-                  s.rent = monthlyRent || s.rent;
-                  s.shopName = s.shopName || application.shopName || application.businessName || '';
-                  // store lease end date for future un-allocation tasks
-                  try {
-                    s.leaseEndDate = endDate;
-                  } catch (ee) {}
-                  layoutChanged = true;
-                  break;
-                }
-              }
-              if (layoutChanged) break;
-            }
-            if (layoutChanged) {
-              await layout.save();
-              console.log('Updated StationLayout allocation for application', application._id.toString());
-            }
-          }
-        } catch (e) {
-          console.error('Failed to update StationLayout for application', application._id, e);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to create agreement/payments after approval for application', application._id, e);
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: `Application ${action.toLowerCase()} successfully`,
-      application 
-    });
 
   } catch (error) {
     console.error('Error processing application:', error);

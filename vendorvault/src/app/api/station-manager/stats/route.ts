@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
-import License from "@/models/License";
 import ShopApplication from "@/models/ShopApplication";
-import Vendor from "@/models/Vendor";
 import Station from "@/models/Station";
+import StationLayout from "@/models/StationLayout";
+import VendorAgreement from "@/models/VendorAgreement";
+import VendorPayment from "@/models/VendorPayment";
 import { getAuthUser } from "@/middleware/auth";
 
 // Get statistics for station manager's station
@@ -38,59 +39,71 @@ export async function GET(request: NextRequest) {
       stationId: station._id
     });
 
-    // Get application IDs for this station
-    const applicationIds = await ShopApplication.find({
-      stationId: station._id
-    }).distinct('_id');
-
+    // Get counts by application status
     const [
-      approvedLicenses,
-      pendingLicenses,
-      rejectedLicenses,
-      expiredLicenses
+      approvedApplications,
+      pendingApplications,
+      rejectedApplications,
+      activeApplications,
     ] = await Promise.all([
-      License.countDocuments({ applicationId: { $in: applicationIds }, status: 'APPROVED' }),
-      License.countDocuments({ applicationId: { $in: applicationIds }, status: 'PENDING' }),
-      License.countDocuments({ applicationId: { $in: applicationIds }, status: 'REJECTED' }),
-      License.countDocuments({ applicationId: { $in: applicationIds }, status: 'EXPIRED' })
+      ShopApplication.countDocuments({ stationId: station._id, status: 'APPROVED' }),
+      ShopApplication.countDocuments({ stationId: station._id, status: { $in: ['SUBMITTED', 'NEGOTIATION'] } }),
+      ShopApplication.countDocuments({ stationId: station._id, status: 'REJECTED' }),
+      ShopApplication.countDocuments({ stationId: station._id, status: 'ACTIVE' }),
+    ]);
+
+    // Get platform statistics from StationLayout (source of truth)
+    const layout = await StationLayout.findOne({ stationId: station._id }).lean();
+    let platformStats = {
+      totalPlatforms: 0,
+      totalShops: 0,
+      occupiedShops: 0,
+      availableShops: 0,
+    };
+
+    if (layout && layout.platforms) {
+      platformStats.totalPlatforms = layout.platforms.length;
+      layout.platforms.forEach((platform: any) => {
+        const shops = platform.shops || [];
+        platformStats.totalShops += shops.length;
+        platformStats.occupiedShops += shops.filter((s: any) => s.isAllocated).length;
+      });
+      platformStats.availableShops = platformStats.totalShops - platformStats.occupiedShops;
+    }
+
+    // Get active agreements and payment stats
+    const [activeAgreements, pendingPayments, totalRevenue] = await Promise.all([
+      VendorAgreement.countDocuments({ stationId: station._id, status: 'ACTIVE' }),
+      VendorPayment.countDocuments({ stationId: station._id, status: { $in: ['PENDING', 'OVERDUE'] } }),
+      VendorPayment.aggregate([
+        { $match: { stationId: station._id, status: 'PAID' } },
+        { $group: { _id: null, total: { $sum: '$paidAmount' } } }
+      ]).then(result => result[0]?.total || 0),
     ]);
 
     // Get recent pending applications with vendor details
-    const recentApplications = await License.find({
-      applicationId: { $in: applicationIds },
-      status: 'PENDING'
+    const recentApplications = await ShopApplication.find({
+      stationId: station._id,
+      status: { $in: ['SUBMITTED', 'NEGOTIATION'] }
     })
+      .populate('vendorId', 'name email phone')
       .sort({ createdAt: -1 })
       .limit(5)
       .lean();
 
-    // Enrich with vendor details
-    const enrichedApplications = await Promise.all(
-      recentApplications.map(async (license) => {
-        const application = await ShopApplication.findById(license.applicationId);
-        const vendor = await Vendor.findOne({ userId: application?.vendorId });
-        return {
-          ...license,
-          vendorId: {
-            businessName: vendor?.businessName || 'Unknown',
-            ownerName: vendor?.ownerName,
-            email: vendor?.email,
-            contactNumber: vendor?.contactNumber,
-          }
-        };
-      })
-    );
-
     return NextResponse.json({
       stats: {
         totalVendors: totalApplications,
-        approvedLicenses,
-        pendingLicenses,
-        rejectedLicenses,
-        expiredLicenses,
-        activeLicenses: approvedLicenses
+        approvedLicenses: approvedApplications,
+        pendingLicenses: pendingApplications,
+        rejectedLicenses: rejectedApplications,
+        activeLicenses: activeApplications,
+        activeAgreements,
+        pendingPayments,
+        totalRevenue,
+        ...platformStats,
       },
-      recentApplications: enrichedApplications,
+      recentApplications,
       station: {
         name: station.stationName,
         code: station.stationCode,
