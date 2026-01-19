@@ -13,8 +13,10 @@ import VendorAgreement from '@/models/VendorAgreement';
 import VendorPayment from '@/models/VendorPayment';
 import Station from '@/models/Station';
 import StationLayout from '@/models/StationLayout';
+import License from '@/models/License';
 import { verifyAuthToken } from '@/middleware/auth';
 import { createApplicationStatusNotification } from '@/lib/notifications';
+import { generateLicenseQRCode } from '@/lib/qrcode';
 
 // POST: Approve or reject an application
 export async function POST(request: NextRequest) {
@@ -210,6 +212,100 @@ export async function POST(request: NextRequest) {
           console.log('✅ Created agreement:', agreement.agreementNumber);
         } else {
           console.log('ℹ️ Agreement already exists:', agreement.agreementNumber);
+        }
+
+        // Create License document with QR code
+        let license = await License.findOne({ applicationId: application._id });
+        
+        if (!license) {
+          console.log('📄 Creating License document with QR code...');
+          
+          // Generate QR code for license
+          let qrCodeData = '';
+          let qrCodeUrl = '';
+          
+          try {
+            const qrResult = await generateLicenseQRCode(application.licenseNumber!);
+            qrCodeData = qrResult.qrCodeData;
+            qrCodeUrl = qrResult.qrCodeUrl;
+            console.log('✅ QR code generated successfully');
+          } catch (qrError) {
+            console.error('⚠️ Failed to generate QR code:', qrError);
+            // Continue without QR code - it can be regenerated later
+          }
+          
+          // Get station details
+          let stationCode = 'UNK';
+          try {
+            const station = await Station.findById(application.stationId);
+            if (station?.stationCode) stationCode = station.stationCode;
+          } catch (e) {
+            console.warn('Could not fetch station code:', e);
+          }
+          
+          // Get vendor details for emergency contact
+          let emergencyContact = '';
+          try {
+            const vendorUser = await User.findById(application.vendorId);
+            if (vendorUser?.phone) emergencyContact = vendorUser.phone;
+          } catch (e) {
+            console.warn('Could not fetch vendor contact:', e);
+          }
+          
+          license = await License.create({
+            vendorId: application.vendorId,
+            applicationId: application._id,
+            licenseNumber: application.licenseNumber,
+            status: 'ACTIVE',
+            issuedAt: startDate,
+            expiresAt: endDate,
+            qrCodeUrl,
+            qrCodeData,
+            shopId: safeShopId,
+            shopName: application.shopName || `Shop ${safeShopId}`,
+            shopDescription: application.businessPlan || '',
+            stationId: application.stationId,
+            platformId: application.platformId,
+            monthlyRent,
+            securityDeposit: securityDepositAmount,
+            proposedRent: application.quotedRent,
+            agreedRent: monthlyRent,
+            approvedBy: new mongoose.Types.ObjectId(authResult.user.id),
+            approvedAt: new Date(),
+            licenseType: 'PERMANENT',
+            validityPeriod: duration,
+            renewalEligible: true,
+            renewalDate: endDate,
+            qrCodeMetadata: {
+              vendorId: String(application.vendorId),
+              stallId: safeShopId,
+              stationId: String(application.stationId),
+              stationCode,
+              validFrom: startDate,
+              validUntil: endDate,
+              licenseType: 'PERMANENT',
+              emergencyContact,
+            },
+            complianceStatus: 'COMPLIANT',
+          });
+          
+          console.log('✅ Created License:', license.licenseNumber);
+        } else {
+          console.log('ℹ️ License already exists:', license.licenseNumber);
+          
+          // If license exists but no QR code, generate it
+          if (!license.qrCodeUrl && !license.qrCodeData) {
+            try {
+              console.log('📄 Generating missing QR code for existing license...');
+              const qrResult = await generateLicenseQRCode(license.licenseNumber);
+              license.qrCodeData = qrResult.qrCodeData;
+              license.qrCodeUrl = qrResult.qrCodeUrl;
+              await license.save();
+              console.log('✅ QR code added to existing license');
+            } catch (qrError) {
+              console.error('⚠️ Failed to generate QR code for existing license:', qrError);
+            }
+          }
         }
 
         // Create security deposit payment if needed

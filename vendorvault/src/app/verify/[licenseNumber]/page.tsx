@@ -20,6 +20,7 @@ interface LicenseData {
     qrCodeUrl?: string;
     qrCodeData?: string;
     shopName?: string;
+    shopId?: string;
     stationName?: string;
     platformName?: string;
   };
@@ -64,10 +65,13 @@ export default function VerifyPage() {
   const getStatusDisplay = (status: string) => {
     switch (status) {
       case 'APPROVED':
+      case 'ACTIVE':
+      case 'LICENSED':
         return { text: 'Valid', color: 'text-green-600', bg: 'bg-green-100', icon: '✅' };
       case 'EXPIRED':
         return { text: 'Expired', color: 'text-red-600', bg: 'bg-red-100', icon: '❌' };
       case 'REVOKED':
+      case 'SUSPENDED':
         return { text: 'Revoked', color: 'text-red-600', bg: 'bg-red-100', icon: '🚫' };
       case 'PENDING':
         return { text: 'Pending', color: 'text-yellow-600', bg: 'bg-yellow-100', icon: '⏳' };
@@ -143,6 +147,13 @@ export default function VerifyPage() {
                     <p className="text-lg font-semibold text-gray-900">{data.license.shopName || 'N/A'}</p>
                   </div>
 
+                  {data.license.shopId && data.license.shopId !== 'N/A' && (
+                    <div>
+                      <p className="text-sm text-gray-600">Shop ID</p>
+                      <p className="text-base text-gray-700">{data.license.shopId}</p>
+                    </div>
+                  )}
+
                   <div>
                     <p className="text-sm text-gray-600">Station</p>
                     <p className="text-lg font-semibold text-gray-900">{data.license.stationName || data.vendor.stationName}</p>
@@ -186,38 +197,6 @@ export default function VerifyPage() {
                 <p className="text-center text-sm text-gray-600 mt-3">
                   Scan this QR code to verify the license
                 </p>
-              </div>
-            )}
-
-            {/* Documents Section */}
-            {data.documents && data.documents.length > 0 && (
-              <div className="border-t border-gray-200 py-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">License Documents</h3>
-                <div className="space-y-3">
-                  {data.documents.map((doc) => (
-                    <div key={doc._id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-700">
-                          {doc.type === 'ID_PROOF' ? 'ID Proof (Aadhaar/PAN)' : 
-                           doc.type === 'PHOTO' ? 'Stall Photo' : 
-                           doc.type === 'POLICE_VERIFICATION' ? 'Police Verification' : 
-                           doc.type}
-                        </p>
-                        {doc.fileName && (
-                          <p className="text-xs text-gray-500 mt-1">{doc.fileName}</p>
-                        )}
-                      </div>
-                      <a
-                        href={doc.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-indigo-600 hover:text-indigo-700 text-sm font-medium px-3 py-1 border border-indigo-300 rounded-md hover:bg-indigo-50"
-                      >
-                        View
-                      </a>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
 

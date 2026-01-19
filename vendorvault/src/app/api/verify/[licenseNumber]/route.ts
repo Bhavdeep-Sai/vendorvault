@@ -18,10 +18,7 @@ export async function GET(
       licenseNumber: params.licenseNumber,
     }).populate({
       path: 'vendorId',
-      populate: {
-        path: 'userId',
-        select: 'name email phone',
-      },
+      select: 'name email phone',
     });
 
     if (!license) {
@@ -33,64 +30,69 @@ export async function GET(
 
     // Check if license is expired
     let status = license.status;
-    if (status === 'APPROVED' && isLicenseExpired(license.expiresAt)) {
+    if ((status === 'APPROVED' || status === 'ACTIVE') && isLicenseExpired(license.expiresAt)) {
       status = 'EXPIRED';
       // Update in database
       license.status = 'EXPIRED';
       await license.save();
     }
 
-    const vendor = license.vendorId as {
+    const vendorUser = license.vendorId as any as {
       _id: unknown;
-      businessName: string;
-      businessType: string;
-      stationName: string;
-      platformNumber?: string;
-      userId?: { name: string };
+      name: string;
+      email: string;
+      phone?: string;
     };
 
-    // Fetch documents for this vendor
-    const documents = vendor ? await Document.find({ vendorId: vendor._id }) : [];
+    // Get Vendor profile for business details
+    const Vendor = (await import('@/models/Vendor')).default;
+    const vendorProfile = await Vendor.findOne({ userId: vendorUser._id }).lean();
+    const VendorBusiness = (await import('@/models/VendorBusiness')).default;
+    const businessProfile = vendorProfile ? await VendorBusiness.findOne({ vendorId: vendorUser._id }).lean() : null;
+
+    // Fetch documents for this vendor (using Vendor._id if exists)
+    const documents = vendorProfile ? await Document.find({ vendorId: vendorProfile._id }) : [];
 
     // Fetch shop application to get shop and station names
     let shopName = license.shopName || 'N/A';
-    let stationName = vendor?.stationName || 'N/A';
+    let stationName = 'N/A';
     let platformName = 'N/A';
+    let shopId = license.shopId || 'N/A';
 
     try {
-      const application = await ShopApplication.findOne({ 
-        vendorId: license.vendorId,
-        licenseNumber: license.licenseNumber 
-      });
+      // Find application by _id (license.applicationId is the ShopApplication._id)
+      const application = await ShopApplication.findById(license.applicationId);
 
-      if (application) {
-        shopName = application.shopName || shopName;
+      if (!application) {
+        // Try finding by licenseNumber as fallback
+        const appByLicense = await ShopApplication.findOne({ 
+          licenseNumber: license.licenseNumber 
+        });
+        if (appByLicense) {
+          shopName = appByLicense.shopName || shopName;
+          shopId = appByLicense.shopId || shopId;
+        }
+      } else {
+        shopName = application.shopName || `Shop ${application.shopId}` || shopName;
+        shopId = application.shopId || shopId;
         
-        // Fetch station details
-        if (application.stationId) {
-          const station = await Station.findById(application.stationId).exec();
+        // Use station name from application or fetch from Station model
+        stationName = application.stationName || stationName;
+        if (application.stationId && stationName === 'N/A') {
+          const station = await Station.findById(application.stationId);
           if (station) {
-            stationName = station.stationName;
+            stationName = station.name || station.stationName || station.stationCode;
           }
         }
 
-        // Fetch platform details
-        if (application.platformId) {
-          const platform = await Platform.findById(application.platformId).exec();
+        // Use platform number from application
+        platformName = application.platformNumber ? `Platform ${application.platformNumber}` : platformName;
+        
+        // Fetch platform details if available
+        if (application.platformId && platformName === 'N/A') {
+          const platform = await Platform.findById(application.platformId);
           if (platform) {
-            platformName = platform.platformName;
-          }
-        } else if (application.stationId && application.shopId) {
-          // Try to find platform by shop
-          const platform = await Platform.findOne({
-            stationId: application.stationId,
-            $or: [
-              { 'shops._id': application.shopId },
-              { 'shops.shopNumber': application.shopId }
-            ]
-          }).exec();
-          if (platform) {
-            platformName = platform.platformName;
+            platformName = platform.name || platform.platformName || platformName;
           }
         }
       }
@@ -107,15 +109,16 @@ export async function GET(
         qrCodeUrl: license.qrCodeUrl,
         qrCodeData: license.qrCodeData,
         shopName,
+        shopId,
         stationName,
         platformName,
       },
-      vendor: vendor ? {
-        businessName: vendor.businessName,
-        businessType: vendor.businessType,
+      vendor: vendorUser ? {
+        businessName: vendorProfile?.businessName || businessProfile?.businessName || 'N/A',
+        stallType: vendorProfile?.businessType || businessProfile?.businessCategory || 'N/A',
         stationName,
-        platformNumber: vendor.platformNumber,
-        ownerName: vendor.userId?.name,
+        platformNumber: platformName,
+        ownerName: vendorUser.name,
       } : null,
       documents: documents,
     });
