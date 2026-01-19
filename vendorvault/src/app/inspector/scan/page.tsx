@@ -252,20 +252,20 @@ export default function InspectorScanPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6">
-        <h2 className="text-3xl font-extrabold text-indigo-700">Inspector Scan</h2>
-        <p className="text-sm text-gray-600">Scan vendor license QR or enter license number to lookup vendor and record inspection.</p>
+    <div className="max-w-7xl mx-auto p-3 sm:p-6 bg-gray-50 min-h-screen">
+      <div className="mb-4 sm:mb-6">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-indigo-700">Inspector Scan</h2>
+        <p className="text-xs sm:text-sm text-gray-600">Scan vendor license QR or enter license number to lookup vendor and record inspection.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
         {/* Left: Camera + Controls */}
         <div className="lg:col-span-5">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-md p-5">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-md p-4 sm:p-5">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h3 className="text-lg font-semibold text-gray-800">Camera Scanner</h3>
-                <p className="text-xs text-gray-500">Use camera to scan QR. Click "Use Camera" and allow permission.</p>
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800">Camera Scanner</h3>
+                <p className="text-[10px] sm:text-xs text-gray-500">Use camera to scan QR. Click "Camera" and allow permission.</p>
               </div>
               <div className="text-sm">
                 {usingCamera ? <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded">Camera On</span> : <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">Camera Off</span>}
@@ -273,22 +273,24 @@ export default function InspectorScanPage() {
             </div>
 
             <div className="mb-3">
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500 bg-white"
+                  className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500 bg-white"
                   placeholder="Enter license number"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
-                <button
-                  onClick={() => scan()}
-                  disabled={loading || !query}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 shadow-sm"
-                >{loading ? 'Scanning...' : 'Scan'}</button>
-                <button
-                  onClick={() => (usingCamera ? stopScanner() : startScanner())}
-                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-lg hover:from-indigo-700 shadow-sm"
-                >{usingCamera ? 'Stop Camera' : 'Use Camera'}</button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => scan()}
+                    disabled={loading || !query}
+                    className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 shadow-sm whitespace-nowrap"
+                  >{loading ? 'Scanning...' : 'Scan'}</button>
+                  <button
+                    onClick={() => (usingCamera ? stopScanner() : startScanner())}
+                    className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-lg hover:from-indigo-700 shadow-sm whitespace-nowrap"
+                  >{usingCamera ? 'Stop' : 'Camera'}</button>
+                </div>
               </div>
             </div>
 
@@ -342,8 +344,8 @@ export default function InspectorScanPage() {
 
         {/* Right: Result + Record */}
         <div className="lg:col-span-7">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Lookup Result</h3>
+          <div className="bg-white border border-gray-200 rounded-xl shadow-md p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Lookup Result</h3>
 
             {!result ? (
               <div className="text-center py-16 text-gray-500">

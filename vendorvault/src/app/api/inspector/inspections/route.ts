@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     const query: Record<string, unknown> = {
       status: 'APPROVED',
       inspectionLogs: { $exists: true, $ne: [] },
+      'inspectionLogs.inspectorId': user.userId, // Only show inspections by this inspector
     };
 
     if (complianceFilter !== 'all') {

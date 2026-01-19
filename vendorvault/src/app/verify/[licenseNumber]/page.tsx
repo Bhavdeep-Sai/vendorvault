@@ -19,6 +19,9 @@ interface LicenseData {
     expiresAt?: string;
     qrCodeUrl?: string;
     qrCodeData?: string;
+    shopName?: string;
+    stationName?: string;
+    platformName?: string;
   };
   vendor: {
     businessName: string;
@@ -136,19 +139,19 @@ export default function VerifyPage() {
                   </div>
 
                   <div>
-                    <p className="text-sm text-gray-600">Stall Type</p>
-                    <p className="text-lg font-semibold text-gray-900 capitalize">{data.vendor.stallType}</p>
+                    <p className="text-sm text-gray-600">Shop Name</p>
+                    <p className="text-lg font-semibold text-gray-900">{data.license.shopName || 'N/A'}</p>
                   </div>
 
                   <div>
                     <p className="text-sm text-gray-600">Station</p>
-                    <p className="text-lg font-semibold text-gray-900">{data.vendor.stationName}</p>
+                    <p className="text-lg font-semibold text-gray-900">{data.license.stationName || data.vendor.stationName}</p>
                   </div>
 
-                  {data.vendor.platformNumber && (
+                  {data.license.platformName && data.license.platformName !== 'N/A' && (
                     <div>
                       <p className="text-sm text-gray-600">Platform</p>
-                      <p className="text-lg font-semibold text-gray-900">{data.vendor.platformNumber}</p>
+                      <p className="text-lg font-semibold text-gray-900">{data.license.platformName}</p>
                     </div>
                   )}
                 </>

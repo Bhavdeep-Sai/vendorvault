@@ -3,9 +3,11 @@ import { TrainIcon } from '@/components/Icons';
 interface Platform {
   _id: string;
   platformNumber: number;
-  platformType: string;
-  platformLength: number;
-  platformWidth: number;
+  platformType?: string;
+  dimensions: {
+    length: number;
+    width: number;
+  };
   stationId: {
     stationName: string;
     stationCode: string;
@@ -46,9 +48,9 @@ export function PlatformsManagement({ platforms }: PlatformsManagementProps) {
                     <div className="text-sm text-gray-900">{platform.stationId?.stationName || 'N/A'}</div>
                     <div className="text-xs text-gray-500">{platform.stationId?.stationCode || ''}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{platform.platformType}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{platform.platformLength}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{platform.platformWidth}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{platform.platformType || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{platform.dimensions?.length || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{platform.dimensions?.width || '-'}</td>
                 </tr>
               ))}
             </tbody>
