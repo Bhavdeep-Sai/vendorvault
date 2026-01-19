@@ -4,10 +4,10 @@ import { getAuthUser } from '@/middleware/auth';
 import ShopApplication from '@/models/ShopApplication';
 import License from '@/models/License';
 
-// PATCH /api/vendor/applications/[applicationId]/shop-name - Update shop name
+// PATCH /api/vendor/applications/[id]/shop-name - Update shop name
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<{ applicationId: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const params = await context.params;
@@ -25,7 +25,7 @@ export async function PATCH(
     }
 
     // Find the application
-    const application = await ShopApplication.findById(params.applicationId);
+    const application = await ShopApplication.findById(params.id);
     
     if (!application) {
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
@@ -47,7 +47,7 @@ export async function PATCH(
 
     // Also update in License if exists
     try {
-      const license = await License.findOne({ applicationId: params.applicationId });
+      const license = await License.findOne({ applicationId: params.id });
       if (license) {
         license.shopName = shopName.trim();
         await license.save();
