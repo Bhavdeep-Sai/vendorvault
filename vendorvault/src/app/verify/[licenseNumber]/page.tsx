@@ -344,9 +344,28 @@ export default function VerifyPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Bank Details (for reference) */}
+                  {data.vendor && (data.vendor.bankName || data.vendor.ifscCode) && (
+                    <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                      <h4 className="text-sm font-semibold text-purple-900 mb-3">Bank Details</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {data.vendor.bankName && data.vendor.bankName !== 'N/A' && (
                           <div>
-                            <p className="text-sm text-blue-700">Security Deposit</p>
-                            <p className="text-lg font-semibold text-blue-900">₹{data.license.securityDeposit.toLocaleString()}</p>
+                            <p className="text-sm text-purple-700">Bank Name</p>
+                            <p className="text-base text-purple-900">{data.vendor.bankName}</p>
+                          </div>
+                        )}
+                        {data.vendor.accountHolderName && data.vendor.accountHolderName !== 'N/A' && (
+                          <div>
+                            <p className="text-sm text-purple-700">Account Holder</p>
+                            <p className="text-base text-purple-900">{data.vendor.accountHolderName}</p>
+                          </div>
+                        )}
+                        {data.vendor.ifscCode && data.vendor.ifscCode !== 'N/A' && (
+                          <div>
+                            <p className="text-sm text-purple-700">IFSC Code</p>
+                            <p className="text-base text-purple-900">{data.vendor.ifscCode}</p>
                           </div>
                         )}
                       </div>

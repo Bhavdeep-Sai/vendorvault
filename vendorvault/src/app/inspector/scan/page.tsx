@@ -559,43 +559,29 @@ export default function InspectorScanPage() {
                     </div>
                   </div>
                 )}
-                        <div className="text-sm text-gray-700">{p.paymentType}</div>
-                        <div className="text-sm font-semibold text-gray-900 flex items-center gap-3">
-                          <span>{p.amount}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === 'PAID' ? 'bg-green-100 text-green-800' : p.status === 'OVERDUE' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>
-                            {p.status}
-                          </span>
-                        </div>
-                      </div>
-                    )) : (
-                      <div className="text-sm text-gray-500">No payments found</div>
-                    )}
-                  </div>
-                </div>
 
-                {/* QR Metadata */}
-                {result.license?.qrCodeMetadata && (
-                  <div className="p-4 border border-gray-100 rounded-md bg-white">
-                    <p className="text-xs text-gray-500">QR Metadata</p>
-                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {(() => {
-                        const meta = typeof result.license.qrCodeMetadata === 'string'
-                          ? (() => { try { return JSON.parse(result.license.qrCodeMetadata); } catch { return { raw: result.license.qrCodeMetadata }; } })()
-                          : result.license.qrCodeMetadata || {};
-                        return Object.keys(meta).length === 0 ? (
-                          <div className="text-sm text-gray-500">No metadata available</div>
-                        ) : (
-                          Object.entries(meta).map(([k, v]) => (
-                            <div key={k} className="p-3 border border-gray-100 rounded-md bg-gray-50 text-sm">
-                              <div className="text-xs text-gray-500 uppercase tracking-wide">{k}</div>
-                              <div className="font-medium text-gray-900 mt-1 truncate">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</div>
-                            </div>
-                          ))
-                        );
-                      })()}
+                {/* Scan Information */}
+                {result.scanInfo && (
+                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                    <h4 className="text-base font-semibold text-indigo-900 mb-3">🔍 Scan Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-xs text-indigo-700 uppercase tracking-wide">Scanned By</p>
+                        <p className="text-sm text-indigo-900">{result.scanInfo.scannedBy}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-indigo-700 uppercase tracking-wide">Scan Time</p>
+                        <p className="text-sm text-indigo-900">{new Date(result.scanInfo.scannedAt).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-indigo-700 uppercase tracking-wide">Data Format</p>
+                        <p className="text-sm text-indigo-900">{result.scanInfo.dataFormat}</p>
+                      </div>
                     </div>
                   </div>
                 )}
+
+                {/* Inspection Recording Form */}
 
                 <div className="bg-white p-4 border border-gray-200 rounded-lg">
                   <h4 className="text-sm font-semibold mb-3">🔍 Record Inspection</h4>
