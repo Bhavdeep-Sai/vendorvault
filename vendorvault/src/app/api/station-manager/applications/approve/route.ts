@@ -289,13 +289,16 @@ export async function POST(request: NextRequest) {
         } catch (e) {
           console.error('Failed to ensure payments for application', application._id, e);
         }
-                // platform shops store shopNumber which may equal application.shopId
-                const Platform = (await import('@/models/Platform')).default;
-                // Try multiple strategies to find the platform/shop:
-                // 1) Match shops._id by ObjectId
-                // 2) Match shops.shopNumber by string
-                // 3) Fallback to matching shops.shopNumber loosely
-                let platform: any = null;
+
+        // Update Platform/Shop occupancy status
+        try {
+          // platform shops store shopNumber which may equal application.shopId
+          const Platform = (await import('@/models/Platform')).default;
+          // Try multiple strategies to find the platform/shop:
+          // 1) Match shops._id by ObjectId
+          // 2) Match shops.shopNumber by string
+          // 3) Fallback to matching shops.shopNumber loosely
+          let platform: any = null;
                 try {
                   platform = await Platform.findOne({ stationId: application.stationId, 'shops._id': new mongoose.Types.ObjectId(String(application.shopId)) });
                 } catch (e) {
@@ -307,62 +310,61 @@ export async function POST(request: NextRequest) {
                 if (!platform) {
                   platform = await Platform.findOne({ stationId: application.stationId, 'shops.shopNumber': application.shopId });
                 }
-                if (platform) {
-                    // find the shop entry and update using agr.shopId fallback
-                    const matchId = agr && agr.shopId ? String(agr.shopId) : String(application.shopId || safeShopId);
-                    const idx = platform.shops.findIndex((s: any) => String(s._id) === matchId || String(s.shopNumber) === matchId || String(s.shopId) === matchId || String(s.id) === matchId);
-                    if (idx !== -1) {
-                      platform.shops[idx].status = 'OCCUPIED';
-                      platform.shops[idx].vendorId = application.vendorId;
-                      platform.shops[idx].vendorName = undefined;
-                      platform.shops[idx].occupiedSince = application.licenseIssuedAt || new Date();
-                      platform.shops[idx].leaseEndDate = application.licenseExpiresAt || null;
-                      platform.updateShopCounts();
-                      await platform.save();
-                    }
-                  }
-              } catch (e) {
-                console.error('Failed to update platform/shop occupancy for application', application._id, e);
-              }
-
-              // Also update StationLayout (visual layout) to mark the shop zone as allocated
-              try {
-                const layout = await StationLayout.findOne({ stationId: application.stationId });
-                if (layout && Array.isArray(layout.platforms)) {
-                  let layoutChanged = false;
-                  for (const plat of layout.platforms) {
-                    if (!Array.isArray(plat.shops)) continue;
-                    for (const s of plat.shops) {
-                      const candidates = [];
-                      if (s._id) candidates.push(String(s._id));
-                      if (s.id) candidates.push(String(s.id));
-                      if (s.shopId) candidates.push(String(s.shopId));
-                      if (s.shopNumber) candidates.push(String(s.shopNumber));
-                      if (candidates.includes(String(safeShopId))) {
-                        // mark allocated until agreement endDate
-                        s.isAllocated = true;
-                        s.vendorId = String(application.vendorId);
-                        s.rent = monthlyRent || s.rent;
-                        s.shopName = s.shopName || application.shopName || application.businessName || '';
-                        // store lease end date for future un-allocation tasks
-                        try {
-                          s.leaseEndDate = endDate;
-                        } catch (ee) {}
-                        layoutChanged = true;
-                        break;
-                      }
-                    }
-                    if (layoutChanged) break;
-                  }
-                  if (layoutChanged) {
-                    await layout.save();
-                    console.log('Updated StationLayout allocation for application', application._id.toString());
-                  }
-                }
-              } catch (e) {
-                console.error('Failed to update StationLayout for application', application._id, e);
-              }
+          if (platform) {
+            // find the shop entry and update using agr.shopId fallback
+            const matchId = agr && agr.shopId ? String(agr.shopId) : String(application.shopId || safeShopId);
+            const idx = platform.shops.findIndex((s: any) => String(s._id) === matchId || String(s.shopNumber) === matchId || String(s.shopId) === matchId || String(s.id) === matchId);
+            if (idx !== -1) {
+              platform.shops[idx].status = 'OCCUPIED';
+              platform.shops[idx].vendorId = application.vendorId;
+              platform.shops[idx].vendorName = undefined;
+              platform.shops[idx].occupiedSince = application.licenseIssuedAt || new Date();
+              platform.shops[idx].leaseEndDate = application.licenseExpiresAt || null;
+              platform.updateShopCounts();
+              await platform.save();
+            }
           }
+        } catch (e) {
+          console.error('Failed to update platform/shop occupancy for application', application._id, e);
+        }
+
+        // Also update StationLayout (visual layout) to mark the shop zone as allocated
+        try {
+          const layout = await StationLayout.findOne({ stationId: application.stationId });
+          if (layout && Array.isArray(layout.platforms)) {
+            let layoutChanged = false;
+            for (const plat of layout.platforms) {
+              if (!Array.isArray(plat.shops)) continue;
+              for (const s of plat.shops) {
+                const candidates = [];
+                if (s._id) candidates.push(String(s._id));
+                if (s.id) candidates.push(String(s.id));
+                if (s.shopId) candidates.push(String(s.shopId));
+                if (s.shopNumber) candidates.push(String(s.shopNumber));
+                if (candidates.includes(String(safeShopId))) {
+                  // mark allocated until agreement endDate
+                  s.isAllocated = true;
+                  s.vendorId = String(application.vendorId);
+                  s.rent = monthlyRent || s.rent;
+                  s.shopName = s.shopName || application.shopName || application.businessName || '';
+                  // store lease end date for future un-allocation tasks
+                  try {
+                    s.leaseEndDate = endDate;
+                  } catch (ee) {}
+                  layoutChanged = true;
+                  break;
+                }
+              }
+              if (layoutChanged) break;
+            }
+            if (layoutChanged) {
+              await layout.save();
+              console.log('Updated StationLayout allocation for application', application._id.toString());
+            }
+          }
+        } catch (e) {
+          console.error('Failed to update StationLayout for application', application._id, e);
+        }
       }
     } catch (e) {
       console.error('Failed to create agreement/payments after approval for application', application._id, e);
