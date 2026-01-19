@@ -17,7 +17,7 @@ export default function DocumentPreviewPage() {
   const router = useRouter();
   const documentId = params.documentId as string;
   
-  const [documentData, setDocumentData] = useState<DocumentData | null>(null);
+  const [document, setDocument] = useState<DocumentData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export default function DocumentPreviewPage() {
         const response = await fetch(`/api/documents/${documentId}/info`);
         if (response.ok) {
           const data = await response.json();
-          setDocumentData(data.document);
+          setDocument(data.document);
         }
       } catch (error) {
         console.error("Failed to fetch document info:", error);
@@ -41,7 +41,7 @@ export default function DocumentPreviewPage() {
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = `/api/documents/${documentId}`;
-    link.download = documentData?.fileName || 'document';
+    link.download = document?.fileName || 'document';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -66,19 +66,19 @@ export default function DocumentPreviewPage() {
               ) : (
                 <div>
                   <h1 className="text-lg font-semibold text-gray-900">
-                    {documentData?.type.replace(/_/g, ' ')}
+                    {document?.type.replace(/_/g, ' ')}
                   </h1>
                   <p className="text-sm text-gray-500">
-                    {documentData?.fileName}
+                    {document?.fileName}
                   </p>
                 </div>
               )}
             </div>
 
             <div className="flex items-center space-x-2">
-              {documentData && (
+              {document && (
                 <>
-                  {documentData.verified && (
+                  {document.verified && (
                     <span className="px-3 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
                       Verified
                     </span>

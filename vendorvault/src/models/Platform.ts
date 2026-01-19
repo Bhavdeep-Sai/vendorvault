@@ -35,7 +35,6 @@ export interface IPlatform extends Document {
   facilities: string[]; // ['waiting-room', 'restroom', 'ticket-counter']
   createdAt: Date;
   updatedAt: Date;
-  updateShopCounts(): void;
 }
 
 const ShopSchema = new Schema({
@@ -132,6 +131,6 @@ PlatformSchema.methods.updateShopCounts = function() {
   this.totalShops = this.shops.length;
 };
 
-const Platform = (mongoose.models.Platform as mongoose.Model<IPlatform>) || mongoose.model<IPlatform>('Platform', PlatformSchema);
+const Platform = mongoose.models?.Platform || mongoose.model<IPlatform>('Platform', PlatformSchema);
 
 export default Platform;

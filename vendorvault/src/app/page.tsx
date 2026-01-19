@@ -1,15 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import {
   DocumentIcon,
   LightningIcon,
-  QrCodeIcon,
-  UserIcon,
-  ShieldIcon,
   CheckIcon,
 } from "@/components/Icons";
 
@@ -34,21 +31,58 @@ const ShopIcon = ({
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
 
+  // Check sessionStorage after component mounts (client-side only)
   useEffect(() => {
-    if (canvasRef.current && typeof window !== "undefined") {
-      const url = `${window.location.origin}/welcome`;
-
-      QRCode.toCanvas(canvasRef.current, url, {
-        width: 120,
-        margin: 1,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
-        },
-      });
+    const hasSeenWelcome = sessionStorage.getItem('hasSeenWelcome');
+    
+    if (!hasSeenWelcome) {
+      setShowWelcome(true);
+      sessionStorage.setItem('hasSeenWelcome', 'true');
+      
+      const timer = setTimeout(() => {
+        setShowWelcome(false);
+      }, 2500);
+      
+      setMounted(true);
+      return () => clearTimeout(timer);
     }
+    
+    setMounted(true);
   }, []);
+
+  // Separate effect for QR code generation
+  useEffect(() => {
+    if (!mounted) return;
+    
+    const generateQR = () => {
+      if (canvasRef.current) {
+        const url = `${window.location.origin}/`;
+
+        QRCode.toCanvas(canvasRef.current, url, {
+          width: 120,
+          margin: 1,
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        });
+      }
+    };
+
+    // Generate QR immediately and after a short delay to ensure canvas is ready
+    generateQR();
+    const qrTimer = setTimeout(generateQR, 100);
+    
+    return () => clearTimeout(qrTimer);
+  }, [mounted]);
+
+  // Show nothing during SSR to prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   const fadeInUp = {
     initial: { opacity: 0, y: 20 },
@@ -65,9 +99,58 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <>
+      <AnimatePresence>
+        {showWelcome && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 bg-linear-to-br from-cyan-50 via-white to-purple-50 flex items-center justify-center z-50"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="text-center"
+            >
+              {/* Logo/Icon */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="flex justify-center mb-8"
+              >
+                <div className="bg-cyan-600 p-6 rounded-2xl shadow-lg">
+                  <ShopIcon size={48} className="text-white" />
+                </div>
+              </motion.div>
+
+              {/* Welcome Message */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <h1 className="text-4xl font-bold text-gray-900 mb-3">
+                  Welcome to
+                </h1>
+                <h2 className="text-5xl font-bold bg-linear-to-r from-cyan-600 to-purple-600 bg-clip-text text-transparent mb-4">
+                  VendorVault
+                </h2>
+                <p className="text-gray-600 text-lg">
+                  Streamlining railway station commerce
+                </p>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="min-h-screen bg-white">
       {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/95">
+      <nav className="bg-white/95 border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <motion.div
@@ -737,6 +820,7 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }

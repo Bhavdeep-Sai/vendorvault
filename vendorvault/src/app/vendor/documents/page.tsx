@@ -229,8 +229,7 @@ export default function VendorDocumentsPage() {
   const isDocumentRequired = (category: DocumentCategory) => {
     if (category.type === 'FSSAI') {
       // FSSAI is only required for food vendors
-      const businessType = (vendor as any)?.businessType?.toLowerCase() || '';
-      return businessType.includes('food') || businessType.includes('tea') || businessType.includes('snacks');
+      return vendor?.stallType === 'tea' || vendor?.stallType === 'snacks';
     }
     return category.required;
   };
@@ -405,7 +404,7 @@ export default function VendorDocumentsPage() {
                     {/* Upload Button */}
                     <div>
                       <input
-                        ref={(el) => { fileInputRefs.current[category.type] = el; }}
+                        ref={(el) => fileInputRefs.current[category.type] = el}
                         type="file"
                         accept={category.acceptedFormats.map(format => `.${format.toLowerCase()}`).join(',')}
                         onChange={(e) => {

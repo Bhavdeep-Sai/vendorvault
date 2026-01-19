@@ -6,15 +6,15 @@ import Platform from '@/models/Platform';
 // Get platforms with available shops for a specific station
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ stationCode: string }> }
+  { params }: { params: { stationCode: string } }
 ) {
   try {
     await connectDB();
 
-    const { stationCode } = await params;
+    const { stationCode } = params;
 
     // Find the station
-    const station = await Station.findOne({
+    const station = await Station.findOne({ 
       stationCode: stationCode.toUpperCase(),
       approvalStatus: 'APPROVED',
       layoutCompleted: true

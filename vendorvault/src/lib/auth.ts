@@ -33,7 +33,7 @@ export function verifyTokenString(token: string): { userId: string; role: string
   try {
     const decoded = jwt.verify(token, getJWTSecret()) as { userId: string; role: string };
     return decoded;
-  } catch {
+  } catch (error: any) {
     return null;
   }
 }
@@ -92,5 +92,3 @@ export async function verifyToken(request: NextRequest) {
   }
 }
 
-// Alias for compatibility
-export const verifyAuth = verifyToken;

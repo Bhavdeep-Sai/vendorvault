@@ -8,7 +8,7 @@ export default function GenerateQRPage() {
 
   useEffect(() => {
     if (canvasRef.current) {
-      const url = `${window.location.origin}/welcome`;
+      const url = `${window.location.origin}/`;
       
       QRCode.toCanvas(canvasRef.current, url, {
         width: 400,
@@ -38,7 +38,7 @@ export default function GenerateQRPage() {
           VendorVault QR Code
         </h1>
         <p className="text-gray-600 mb-8">
-          Scan to access the welcome page
+          Scan to access the home page with welcome animation
         </p>
         
         <div className="bg-cyan-50 p-6 rounded-xl mb-6 inline-block">
@@ -53,7 +53,7 @@ export default function GenerateQRPage() {
         </button>
         
         <p className="text-sm text-gray-500 mt-6">
-          URL: {typeof window !== 'undefined' ? `${window.location.origin}/welcome` : ''}
+          URL: {typeof window !== 'undefined' ? `${window.location.origin}/` : ''}
         </p>
       </div>
     </div>

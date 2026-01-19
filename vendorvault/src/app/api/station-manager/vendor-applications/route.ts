@@ -94,7 +94,12 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    const pagination = createPaginationResult(applications, totalApplications, page, limit);
+    const pagination = createPaginationResult({
+      data: applications,
+      total: totalApplications,
+      page,
+      limit
+    });
 
     return NextResponse.json({
       applications,

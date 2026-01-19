@@ -123,6 +123,6 @@ StationSchema.index({ approvalStatus: 1 });
 StationSchema.index({ railwayZone: 1 });
 StationSchema.index({ approvalStatus: 1, createdAt: -1 }); // Compound index for sorting
 
-const Station = (mongoose.models.Station as mongoose.Model<IStation>) || mongoose.model<IStation>('Station', StationSchema);
+const Station = mongoose.models?.Station || mongoose.model<IStation>('Station', StationSchema);
 
 export default Station;

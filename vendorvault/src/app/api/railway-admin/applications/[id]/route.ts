@@ -5,7 +5,6 @@ import Vendor from '@/models/Vendor';
 import Document from '@/models/Document';
 import { getAuthUser } from '@/middleware/auth';
 import { generateQRCode } from '@/lib/qrcode';
-import mongoose from 'mongoose';
 
 export async function GET(
   request: NextRequest,
@@ -105,7 +104,7 @@ export async function PATCH(
       license.expiresAt = expiryDate;
       license.qrCodeData = qrCodeData;
       license.qrCodeUrl = qrCodeUrl;
-      license.createdByAdminId = new mongoose.Types.ObjectId(auth.userId);
+      license.createdByAdminId = auth.userId;
       license.rejectionReason = undefined;
 
       await license.save();
@@ -124,7 +123,7 @@ export async function PATCH(
 
       license.status = 'REJECTED';
       license.rejectionReason = rejectionReason;
-      license.createdByAdminId = new mongoose.Types.ObjectId(auth.userId);
+      license.createdByAdminId = auth.userId;
 
       await license.save();
 
@@ -134,7 +133,7 @@ export async function PATCH(
       });
     } else if (action === 'revoke') {
       license.status = 'REVOKED';
-      license.createdByAdminId = new mongoose.Types.ObjectId(auth.userId);
+      license.createdByAdminId = auth.userId;
 
       await license.save();
 

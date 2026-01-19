@@ -14,7 +14,6 @@ import {
   ElementGroup,
   ShopZone, 
   InfrastructureBlock,
-  InfrastructureType,
   EditorAction,
   CANVAS_CONSTANTS 
 } from '@/types/layout';
@@ -531,6 +530,9 @@ export const useLayoutStore = create<LayoutEditorState>()(
           // Track and restricted zone as nested properties
           track: {
             trackNumber,
+            x: xPosition,
+            y: baseY + platformHeight + restrictedZoneHeight,
+            length: elementLength,
             height: trackHeight,
           },
           restrictedZone: {
@@ -1056,37 +1058,25 @@ export const useLayoutStore = create<LayoutEditorState>()(
           const sortedBlocked = [...blockedRanges].sort((a, b) => a.start - b.start);
           
           // Find first available gap that fits the shop
-          const trackLength = platform.length || 1500;
+          const trackLength = platform.track?.length || 1500;
           let availableStart = 0;
           let foundSpace = false;
 
           // Check space before first blocked range
-          if (sortedBlocked.length === 0) {
-            // No blocked ranges, entire track is available
+          if (sortedBlocked[0].start >= shopZone.width) {
             availableStart = 0;
             foundSpace = true;
           } else {
-            const firstBlocked = sortedBlocked[0];
-            if (firstBlocked && firstBlocked.start >= shopZone.width) {
-              availableStart = 0;
-              foundSpace = true;
-            } else {
             // Check gaps between blocked ranges and after last one
             for (let i = 0; i < sortedBlocked.length; i++) {
-              const currentBlocked = sortedBlocked[i];
-              const nextBlocked = sortedBlocked[i + 1];
-              
-              if (!currentBlocked) continue;
-              
-              const gapStart = currentBlocked.end;
-              const gapEnd = nextBlocked ? nextBlocked.start : trackLength;
+              const gapStart = sortedBlocked[i].end;
+              const gapEnd = i + 1 < sortedBlocked.length ? sortedBlocked[i + 1].start : trackLength;
               
               if (gapEnd - gapStart >= shopZone.width) {
                 availableStart = gapStart;
                 foundSpace = true;
                 break;
               }
-            }
             }
           }
 
@@ -1460,13 +1450,9 @@ export const useLayoutStore = create<LayoutEditorState>()(
         
         if (platformNumbers.length > 0) {
           for (let i = 1; i < platformNumbers.length; i++) {
-            const currentPlatform = platformNumbers[i];
-            const prevPlatform = platformNumbers[i-1];
-            
-            if (currentPlatform !== undefined && prevPlatform !== undefined &&
-                currentPlatform !== prevPlatform && 
-                currentPlatform !== prevPlatform + 1) {
-              errors.push(`Platform numbering is not sequential. Missing platform ${prevPlatform + 1}`);
+            if (platformNumbers[i] !== platformNumbers[i-1] && 
+                platformNumbers[i] !== platformNumbers[i-1] + 1) {
+              errors.push(`Platform numbering is not sequential. Missing platform ${platformNumbers[i-1] + 1}`);
               break;
             }
           }
@@ -1536,13 +1522,9 @@ export const useLayoutStore = create<LayoutEditorState>()(
           
           // Check for sequential numbering
           for (let i = 1; i < platformNumbers.length; i++) {
-            const currentPlatform = platformNumbers[i];
-            const prevPlatform = platformNumbers[i-1];
-            
-            if (currentPlatform !== undefined && prevPlatform !== undefined &&
-                currentPlatform !== prevPlatform && 
-                currentPlatform !== prevPlatform + 1) {
-              errors.push(`Platform numbering is not sequential. Gap between Platform ${prevPlatform} and ${currentPlatform}`);
+            if (platformNumbers[i] !== platformNumbers[i-1] && 
+                platformNumbers[i] !== platformNumbers[i-1] + 1) {
+              errors.push(`Platform numbering is not sequential. Gap between Platform ${platformNumbers[i-1]} and ${platformNumbers[i]}`);
               break;
             }
           }
@@ -1579,6 +1561,9 @@ export const useLayoutStore = create<LayoutEditorState>()(
           ...(platform.track && {
             track: {
               trackNumber: platform.track.trackNumber,
+              x: platform.track.x,
+              y: platform.track.y,
+              length: platform.track.length,
               height: platform.track.height,
             }
           }),

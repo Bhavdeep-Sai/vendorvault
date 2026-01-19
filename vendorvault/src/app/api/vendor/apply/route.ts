@@ -73,6 +73,7 @@ async function handler(req: NextRequest, userId: string) {
       vendor.platformNumber = platformNumber;
       vendor.shopNumber = shopId; // Store shopId temporarily, will be updated on approval
       vendor.stallLocationDescription = `Platform ${platformNumber}, Shop Area`;
+      vendor.shopDescription = shopDescription || undefined;
       await vendor.save();
     } else {
       // Create new vendor with application details
@@ -90,7 +91,7 @@ async function handler(req: NextRequest, userId: string) {
     }
 
     // Find the station by stationCode
-    const station = await Station.findOne({ stationCode }).exec();
+    const station = await Station.findOne({ stationCode });
     if (!station) {
       return NextResponse.json(
         { error: 'Station not found', shopDescription: shopDescription || undefined },
@@ -120,7 +121,7 @@ async function handler(req: NextRequest, userId: string) {
       shopId,
       shopName: shopName || undefined,
       stationId: station._id,
-      stationName: station.stationName,
+      stationName: station.stationName || station.stationName || station.name,
       platformNumber: platformNumber,
       quotedRent: proposedMonthlyRent,
       securityDeposit: proposedMonthlyRent * 3, // Standard 3 months deposit
@@ -136,7 +137,7 @@ async function handler(req: NextRequest, userId: string) {
 
     // Create license application linked to shop application
     const licenseNumber = generateLicenseNumber();
-
+    
     const initialMessage = {
       senderId: userId,
       senderRole: 'VENDOR' as const,
@@ -145,7 +146,7 @@ async function handler(req: NextRequest, userId: string) {
       proposedRent: proposedMonthlyRent,
       timestamp: new Date(),
     };
-
+    
     const license = await License.create({
       vendorId: userId, // Store User ID for consistency
       applicationId: shopApplication._id, // Link to shop application
@@ -163,7 +164,7 @@ async function handler(req: NextRequest, userId: string) {
       negotiationStatus: 'PENDING', // Start negotiation
       negotiationMessages: [initialMessage],
     });
-
+    
     // Create notification for station manager
     try {
       if (station.stationManagerId) {

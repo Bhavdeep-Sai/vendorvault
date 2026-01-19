@@ -247,10 +247,10 @@ export function AgreementManagement({ refreshTrigger, onRefresh }: AgreementMana
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {agreement.vendorId?.fullName || 'Vendor'}
+                        {agreement.vendor?.fullName || agreement.vendorId?.fullName || agreement.vendor?.businessName || 'Vendor'}
                       </div>
                       <div className="text-xs text-gray-500">
-                        Shop: {agreement.applicationId?.shopId || 'N/A'}
+                        Shop: {agreement.application?.shopId || agreement.applicationId?.shopId || 'N/A'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

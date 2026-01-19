@@ -303,20 +303,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 👨‍💻 Author
-
-**Bhavdeep Sai**
-
-- GitHub: [@Bhavdeep-Sai](https://github.com/Bhavdeep-Sai)
-- LinkedIn: [Your LinkedIn](https://linkedin.com/in/your-profile)
-
----
-
 ## 🙏 Acknowledgments
 
 - Built as part of Web Systems Integration course project
 - Inspired by the need to digitize Indian Railways operations
-- Special thanks to Kalvium for the opportunity
 
 ---
 

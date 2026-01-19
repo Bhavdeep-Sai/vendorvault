@@ -66,6 +66,8 @@ export async function GET(
       application: {
         _id: application._id,
         shopId: application.shopId,
+        stationName: application.stationName,
+        platformName: application.platformName,
         quotedRent: application.quotedRent,
         securityDeposit: application.securityDeposit,
         status: application.status,
@@ -142,15 +144,10 @@ export async function POST(
 
     // Add message to negotiation
     const newMessage = {
-      messageId: new Date().getTime().toString(),
       senderId: vendor.userId,
-      senderRole: 'VENDOR' as const,
-      senderName: vendor.businessName || vendor.ownerName || 'Vendor',
-      messageType: proposedRent ? 'COUNTER_OFFER' as const : 'TEXT' as const,
-      content: message || `Rent proposal: ₹${proposedRent}`,
+      senderRole: 'VENDOR',
+      message: message || `Rent proposal: ₹${proposedRent}`,
       proposedRent: proposedRent ? parseFloat(proposedRent) : undefined,
-      isRead: false,
-      isEdited: false,
       timestamp: new Date(),
     };
 
@@ -158,15 +155,10 @@ export async function POST(
     
     // Update current rent offer if provided
     if (proposedRent) {
-      negotiationRoom.currentOffer = {
-        rent: parseFloat(proposedRent),
-        securityDeposit: negotiationRoom.currentOffer?.securityDeposit || application.securityDeposit || 0,
-        proposedBy: 'VENDOR',
-        proposedAt: new Date(),
-      };
+      negotiationRoom.currentRentOffer = parseFloat(proposedRent);
     }
 
-    negotiationRoom.lastActivityAt = new Date();
+    negotiationRoom.lastActivity = new Date();
     await negotiationRoom.save();
 
     return NextResponse.json({
@@ -182,5 +174,118 @@ export async function POST(
     );
   }
 }
+        proposedRent: license.proposedRent,
+        agreedRent: license.agreedRent,
+        monthlyRent: license.monthlyRent,
+        negotiationStatus: license.negotiationStatus,
+        negotiationMessages: license.negotiationMessages || [],
+        shopId: license.shopId,
+        shopWidth: license.shopWidth,
+      },
+      vendor: {
+        businessName: vendor.businessName,
+        stationName: vendor.stationName,
+        stationCode: vendor.stationCode,
+        platformNumber: vendor.platformNumber,
+      },
+    });
+  } catch (error: unknown) {
+    console.error('GET Negotiation error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch negotiation' },
+      { status: 500 }
+    );
+  }
+}
 
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ applicationId: string }> }
+) {
+  try {
+    const auth = getAuthUser(req);
+    if (!auth || auth.role !== 'VENDOR') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectDB();
+    const { applicationId } = await params;
+
+    // Optimized query with specific field selection and lean populate
+    const license = await License.findById(applicationId)
+      .select('negotiationMessages proposedRent negotiationStatus vendorId')
+      .populate({
+        path: 'vendorId',
+        select: 'userId businessName'
+      });
+    
+    if (!license) {
+      return NextResponse.json(
+        { error: 'Application not found' },
+        { status: 404 }
+      );
+    }
+
+    // Verify vendor owns this license
+    const vendor = license.vendorId as unknown as { userId: { toString: () => string }; businessName: string };
+    if (vendor.userId.toString() !== auth.userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 403 }
+      );
+    }
+
+    const body = await req.json();
+    const { message, proposedRent } = body;
+
+    if (!message) {
+      return NextResponse.json(
+        { error: 'Message is required' },
+        { status: 400 }
+      );
+    }
+
+    // Add message to negotiation
+    const negotiationMessage = {
+      senderId: auth.userId,
+      senderRole: 'VENDOR' as const,
+      senderName: vendor.businessName || 'Vendor',
+      message,
+      proposedRent: proposedRent ? parseFloat(proposedRent) : undefined,
+      timestamp: new Date(),
+    };
+
+    if (!license.negotiationMessages) {
+      license.negotiationMessages = [];
+    }
+    license.negotiationMessages.push(negotiationMessage);
+
+    // Update proposed rent if provided
+    if (proposedRent) {
+      license.proposedRent = parseFloat(proposedRent);
+    }
+
+    // Update negotiation status
+    if (license.negotiationStatus === 'PENDING') {
+      license.negotiationStatus = 'IN_PROGRESS';
+    }
+
+    await license.save();
+
+    return NextResponse.json({
+      success: true,
+      message: 'Message sent successfully',
+      license: {
+        negotiationMessages: license.negotiationMessages,
+        negotiationStatus: license.negotiationStatus,
+      },
+    });
+  } catch (error: unknown) {
+    console.error('POST Negotiation error:', error);
+    return NextResponse.json(
+      { error: 'Failed to process negotiation' },
+      { status: 500 }
+    );
+  }
+}
 

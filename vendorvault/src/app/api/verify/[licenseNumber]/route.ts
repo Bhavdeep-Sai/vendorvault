@@ -8,15 +8,13 @@ import { isLicenseExpired } from '@/lib/utils';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ licenseNumber: string }> }
+  { params }: { params: { licenseNumber: string } }
 ) {
   try {
     await connectDB();
 
-    const { licenseNumber } = await params;
-
     const license = await License.findOne({
-      licenseNumber,
+      licenseNumber: params.licenseNumber,
     }).populate({
       path: 'vendorId',
       populate: {
