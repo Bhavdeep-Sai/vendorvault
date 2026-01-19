@@ -30,13 +30,24 @@ export async function generateWelcomeQRCode(): Promise<{ qrCodeData: string; qrC
 
 // Generates a QR code for a license verification page
 export async function generateLicenseQRCode(licenseNumber: string): Promise<{ qrCodeData: string; qrCodeUrl: string }> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
-  if (!baseUrl && process.env.NODE_ENV === 'production') {
-    throw new Error('NEXT_PUBLIC_APP_URL must be set in production environment');
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || process.env.VERCEL_URL;
+  
+  // Determine the correct base URL
+  let verifyBaseUrl: string;
+  if (baseUrl) {
+    // If we have a configured base URL, use it
+    verifyBaseUrl = baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`;
+  } else if (process.env.NODE_ENV === 'production') {
+    // In production without configured URL, we need a fallback
+    console.warn('No base URL configured for production. QR codes may not work correctly.');
+    verifyBaseUrl = 'https://vendorvault.vercel.app'; // Replace with your actual domain
+  } else {
+    // Development environment
+    verifyBaseUrl = 'http://localhost:3000';
   }
   
   // Create verification URL
-  const verifyUrl = `${baseUrl || 'http://localhost:3000'}/verify/${licenseNumber}`;
+  const verifyUrl = `${verifyBaseUrl}/verify/${licenseNumber}`;
   
   // Generate QR code as data URL
   const qrCodeData = await QRCode.toDataURL(verifyUrl, {

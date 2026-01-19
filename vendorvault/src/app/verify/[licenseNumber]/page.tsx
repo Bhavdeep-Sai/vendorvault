@@ -23,15 +23,28 @@ interface LicenseData {
     shopId?: string;
     stationName?: string;
     platformName?: string;
+    licenseType?: string;
+    monthlyRent?: number;
+    securityDeposit?: number;
+    validityPeriod?: number;
+    renewalEligible?: boolean;
+    emergencyContact?: string;
+    approvedAt?: string;
   };
   vendor: {
     businessName: string;
-    stallType: string;
+    businessType: string;
+    ownerName: string;
+    phone?: string;
+    email?: string;
     stationName: string;
     platformNumber?: string;
-    ownerName: string;
   } | null;
-  documents?: Document[];
+  verification?: {
+    documentsVerified: boolean;
+    verifiedAt?: string;
+    verifiedBy?: string;
+  };
 }
 
 export default function VerifyPage() {
@@ -132,37 +145,118 @@ export default function VerifyPage() {
 
               {data.vendor && (
                 <>
-                  <div>
-                    <p className="text-sm text-gray-600">Business Name</p>
-                    <p className="text-lg font-semibold text-gray-900">{data.vendor.businessName}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-600">Owner Name</p>
-                    <p className="text-lg font-semibold text-gray-900">{data.vendor.ownerName}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-600">Shop Name</p>
-                    <p className="text-lg font-semibold text-gray-900">{data.license.shopName || 'N/A'}</p>
-                  </div>
-
-                  {data.license.shopId && data.license.shopId !== 'N/A' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600">Shop ID</p>
-                      <p className="text-base text-gray-700">{data.license.shopId}</p>
+                      <p className="text-sm text-gray-600">Business Name</p>
+                      <p className="text-lg font-semibold text-gray-900">{data.vendor.businessName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Business Type</p>
+                      <p className="text-lg font-semibold text-gray-900">{data.vendor.businessType}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Owner Name</p>
+                      <p className="text-lg font-semibold text-gray-900">{data.vendor.ownerName}</p>
+                    </div>
+                    {data.vendor.phone && (
+                      <div>
+                        <p className="text-sm text-gray-600">Contact Number</p>
+                        <p className="text-lg font-semibold text-gray-900">{data.vendor.phone}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Shop Name</p>
+                      <p className="text-lg font-semibold text-gray-900">{data.license.shopName || 'N/A'}</p>
+                    </div>
+                    {data.license.shopId && data.license.shopId !== 'N/A' && (
+                      <div>
+                        <p className="text-sm text-gray-600">Shop ID</p>
+                        <p className="text-base text-gray-700">{data.license.shopId}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Station</p>
+                      <p className="text-lg font-semibold text-gray-900">{data.license.stationName || data.vendor.stationName}</p>
+                    </div>
+                    {data.license.platformName && data.license.platformName !== 'N/A' && (
+                      <div>
+                        <p className="text-sm text-gray-600">Platform</p>
+                        <p className="text-lg font-semibold text-gray-900">{data.license.platformName}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Financial Information */}
+                  {(data.license.monthlyRent || data.license.securityDeposit) && (
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                      <h4 className="text-sm font-semibold text-blue-900 mb-3">Financial Details</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {data.license.monthlyRent && (
+                          <div>
+                            <p className="text-sm text-blue-700">Monthly Rent</p>
+                            <p className="text-lg font-semibold text-blue-900">₹{data.license.monthlyRent.toLocaleString()}</p>
+                          </div>
+                        )}
+                        {data.license.securityDeposit && (
+                          <div>
+                            <p className="text-sm text-blue-700">Security Deposit</p>
+                            <p className="text-lg font-semibold text-blue-900">₹{data.license.securityDeposit.toLocaleString()}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
-                  <div>
-                    <p className="text-sm text-gray-600">Station</p>
-                    <p className="text-lg font-semibold text-gray-900">{data.license.stationName || data.vendor.stationName}</p>
+                  {/* License Details */}
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <h4 className="text-sm font-semibold text-green-900 mb-3">License Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {data.license.licenseType && (
+                        <div>
+                          <p className="text-sm text-green-700">License Type</p>
+                          <p className="text-base font-semibold text-green-900">{data.license.licenseType}</p>
+                        </div>
+                      )}
+                      {data.license.validityPeriod && (
+                        <div>
+                          <p className="text-sm text-green-700">Validity Period</p>
+                          <p className="text-base font-semibold text-green-900">{data.license.validityPeriod} months</p>
+                        </div>
+                      )}
+                      {data.license.renewalEligible !== undefined && (
+                        <div>
+                          <p className="text-sm text-green-700">Renewal Eligible</p>
+                          <p className="text-base font-semibold text-green-900">{data.license.renewalEligible ? 'Yes' : 'No'}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {data.license.platformName && data.license.platformName !== 'N/A' && (
-                    <div>
-                      <p className="text-sm text-gray-600">Platform</p>
-                      <p className="text-lg font-semibold text-gray-900">{data.license.platformName}</p>
+                  {/* Verification Status */}
+                  {data.verification && (
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Verification Status</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-700">Documents Status</p>
+                          <p className="text-base font-semibold text-green-600">✓ Verified</p>
+                        </div>
+                        {data.verification.verifiedAt && (
+                          <div>
+                            <p className="text-sm text-gray-700">Verified On</p>
+                            <p className="text-base font-semibold text-gray-900">{formatDate(data.verification.verifiedAt)}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </>
@@ -178,7 +272,7 @@ export default function VerifyPage() {
               {data.license.expiresAt && (
                 <div>
                   <p className="text-sm text-gray-600">Expires On</p>
-                  <p className="text-lg font-semibold text-gray-900">{formatDate(data.license.expiresAt)}</p>
+                  <p className="text-lg font-semibold text-gray-900 text-red-600">{formatDate(data.license.expiresAt)}</p>
                 </div>
               )}
             </div>
