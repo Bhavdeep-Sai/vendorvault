@@ -28,32 +28,19 @@ export async function generateWelcomeQRCode(): Promise<{ qrCodeData: string; qrC
   return { qrCodeData, qrCodeUrl };
 }
 
-// Generates a QR code for a license verification page
+// Generates a QR code containing just the license number for inspector scanning
 export async function generateLicenseQRCode(licenseNumber: string): Promise<{ qrCodeData: string; qrCodeUrl: string }> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || process.env.VERCEL_URL;
+  // Simple QR code with just license number for easy scanning
+  // Inspector devices can use this to fetch all data from the system
+  const qrContent = licenseNumber;
   
-  // Determine the correct base URL
-  let verifyBaseUrl: string;
-  if (baseUrl) {
-    // If we have a configured base URL, use it
-    verifyBaseUrl = baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`;
-  } else if (process.env.NODE_ENV === 'production') {
-    // In production without configured URL, we need a fallback
-    console.warn('No base URL configured for production. QR codes may not work correctly.');
-    verifyBaseUrl = 'https://vendorvault.vercel.app'; // Replace with your actual domain
-  } else {
-    // Development environment
-    verifyBaseUrl = 'http://localhost:3000';
-  }
-  
-  // Create verification URL
-  const verifyUrl = `${verifyBaseUrl}/verify/${licenseNumber}`;
+  console.log(`Generating QR code for license: ${licenseNumber}`);
   
   // Generate QR code as data URL
-  const qrCodeData = await QRCode.toDataURL(verifyUrl, {
-    errorCorrectionLevel: 'H',
-    width: 512,
-    margin: 2,
+  const qrCodeData = await QRCode.toDataURL(qrContent, {
+    errorCorrectionLevel: 'M', // Medium error correction for better readability
+    width: 256, // Smaller size for better scanning
+    margin: 1,
   });
   
   // Upload to Cloudinary

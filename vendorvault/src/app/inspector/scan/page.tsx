@@ -6,9 +6,54 @@ import { Html5Qrcode } from 'html5-qrcode';
 interface LicenseResult {
   license: any;
   application?: any;
-  vendor?: any;
+  vendor?: {
+    _id: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    businessName: string;
+    businessType: string;
+    businessDescription: string;
+    businessRegistration: string;
+    gstNumber: string;
+    panNumber: string;
+    businessAddress: string;
+    city: string;
+    state: string;
+    pincode: string;
+    bankName: string;
+    accountHolderName: string;
+    ifscCode: string;
+    experienceYears: number;
+    previousExperience: boolean;
+  };
+  shop?: {
+    name: string;
+    id: string;
+    description: string;
+    location: {
+      station: string;
+      stationCode: string;
+      platform: string;
+    };
+  };
+  financial?: {
+    monthlyRent: number;
+    securityDeposit: number;
+    proposedRent: number;
+    agreedRent: number;
+    rentStatus: string;
+    depositStatus: string;
+  };
   agreement?: any;
   payments?: any[];
+  paymentSummary?: any;
+  scanInfo?: {
+    scannedAt: string;
+    scannedBy: string;
+    inspectorId: string;
+    dataFormat: string;
+  };
 }
 
 const StarSelector: React.FC<{ value: number; onChange: (v: number) => void }> = ({ value, onChange }) => {
@@ -353,36 +398,167 @@ export default function InspectorScanPage() {
                 <p className="text-sm">Scan a QR or enter a license number and click Scan to view details.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 border border-gray-100 rounded-md bg-gray-50">
-                    <p className="text-xs text-gray-500">License Number</p>
-                    <p className="font-semibold text-gray-900">{result.license?.licenseNumber || '—'}</p>
-                    <p className="text-xs text-gray-500 mt-2">Status</p>
-                    <p className="text-sm mt-1">
+              <div className="space-y-6">
+                {/* License Status Header */}
+                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 rounded-lg border border-indigo-200">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900">License: {result.license?.licenseNumber || '—'}</h4>
+                      <p className="text-sm text-gray-600">Scanned at {result.scanInfo?.scannedAt ? new Date(result.scanInfo.scannedAt).toLocaleTimeString() : 'N/A'}</p>
+                    </div>
+                    <div>
                       {(() => {
                         const s = (result.license?.status || '').toString().toUpperCase();
-                        if (s === 'APPROVED' || s === 'ACTIVE' || s === 'COMPLIANT') return <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-semibold">{s}</span>;
-                        if (s === 'REJECTED' || s === 'NON_COMPLIANT') return <span className="inline-flex items-center px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold">{s}</span>;
-                        return <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">{s || '—'}</span>;
-                      })()}
-                    </p>
-                  </div>
-
-                  <div className="p-4 border border-gray-100 rounded-md bg-white">
-                    <p className="text-xs text-gray-500">Shop / Station</p>
-                    <p className="font-medium text-gray-900">{result.license?.shopId || '—'} • {result.license?.stationId || '—'}</p>
-                    <p className="text-xs text-gray-500 mt-2">Vendor</p>
-                    <p className="text-sm">{result.vendor?.fullName || result.vendor?.name || '—'}</p>
-                    <p className="text-xs text-gray-500">{result.vendor?.email || ''}</p>
+                        if (s === 'APPROVED' || s === 'ACTIVE' || s === 'COMPLIANT') return <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full font-semibold">{s}</span>;
+                        if (s === 'REJECTED' || s === 'NON_COMPLIANT') return <span className="inline-flex items-center px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full font-semibold">{s}</span>;
+                        return <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full">{s || '—'}</span>;
+                      })()} 
+                    </div>
                   </div>
                 </div>
 
-                <div className="p-4 border border-gray-100 rounded-md bg-white">
-                  <p className="text-xs text-gray-500">Payments</p>
-                  <div className="mt-3 space-y-3">
-                    {result.payments && result.payments.length ? result.payments.map((p: any) => (
-                      <div key={p._id} className="flex items-center justify-between">
+                {/* Vendor Information */}
+                {result.vendor && (
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 className="text-base font-semibold text-gray-900 mb-3">📋 Vendor Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-600 uppercase tracking-wide">Owner Name</p>
+                        <p className="font-semibold text-gray-900">{result.vendor.fullName}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 uppercase tracking-wide">Contact</p>
+                        <p className="text-sm text-gray-700">{result.vendor.phone}</p>
+                        <p className="text-xs text-gray-500">{result.vendor.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 uppercase tracking-wide">Business Name</p>
+                        <p className="font-semibold text-gray-900">{result.vendor.businessName}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 uppercase tracking-wide">Business Type</p>
+                        <p className="text-sm text-gray-700">{result.vendor.businessType}</p>
+                      </div>
+                      {result.vendor.gstNumber && result.vendor.gstNumber !== 'N/A' && (
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wide">GST Number</p>
+                          <p className="text-sm text-gray-700">{result.vendor.gstNumber}</p>
+                        </div>
+                      )}
+                      {result.vendor.businessRegistration && result.vendor.businessRegistration !== 'N/A' && (
+                        <div>
+                          <p className="text-xs text-gray-600 uppercase tracking-wide">Registration No.</p>
+                          <p className="text-sm text-gray-700">{result.vendor.businessRegistration}</p>
+                        </div>
+                      )}
+                    </div>
+                    {result.vendor.businessAddress && result.vendor.businessAddress !== 'N/A' && (
+                      <div className="mt-3">
+                        <p className="text-xs text-gray-600 uppercase tracking-wide">Business Address</p>
+                        <p className="text-sm text-gray-700">
+                          {result.vendor.businessAddress}
+                          {result.vendor.city && result.vendor.city !== 'N/A' && `, ${result.vendor.city}`}
+                          {result.vendor.state && result.vendor.state !== 'N/A' && `, ${result.vendor.state}`}
+                          {result.vendor.pincode && result.vendor.pincode !== 'N/A' && ` - ${result.vendor.pincode}`}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Shop Information */}
+                {result.shop && (
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <h4 className="text-base font-semibold text-green-900 mb-3">🏪 Shop Details</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-green-700 uppercase tracking-wide">Shop Name</p>
+                        <p className="font-semibold text-green-900">{result.shop.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-700 uppercase tracking-wide">Shop ID</p>
+                        <p className="text-sm text-green-800">{result.shop.id}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-700 uppercase tracking-wide">Station</p>
+                        <p className="font-semibold text-green-900">{result.shop.location.station}</p>
+                        <p className="text-xs text-green-600">{result.shop.location.stationCode}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-700 uppercase tracking-wide">Platform</p>
+                        <p className="text-sm text-green-800">{result.shop.location.platform}</p>
+                      </div>
+                    </div>
+                    {result.shop.description && result.shop.description !== 'N/A' && (
+                      <div className="mt-3">
+                        <p className="text-xs text-green-700 uppercase tracking-wide">Description</p>
+                        <p className="text-sm text-green-800">{result.shop.description}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Financial Information */}
+                {result.financial && (
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h4 className="text-base font-semibold text-blue-900 mb-3">💰 Financial Details</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-blue-700 uppercase tracking-wide">Monthly Rent</p>
+                        <p className="font-semibold text-blue-900">₹{result.financial.monthlyRent.toLocaleString()}</p>
+                        <span className={`inline-block px-2 py-0.5 text-xs rounded-full mt-1 ${
+                          result.financial.rentStatus === 'CURRENT' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {result.financial.rentStatus}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-xs text-blue-700 uppercase tracking-wide">Security Deposit</p>
+                        <p className="font-semibold text-blue-900">₹{result.financial.securityDeposit.toLocaleString()}</p>
+                        <span className={`inline-block px-2 py-0.5 text-xs rounded-full mt-1 ${
+                          result.financial.depositStatus === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {result.financial.depositStatus}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-xs text-blue-700 uppercase tracking-wide">Proposed Rent</p>
+                        <p className="text-sm text-blue-800">₹{result.financial.proposedRent.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-blue-700 uppercase tracking-wide">Agreed Rent</p>
+                        <p className="text-sm text-blue-800">₹{result.financial.agreedRent.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bank Details */}
+                {result.vendor && (result.vendor.bankName !== 'N/A' || result.vendor.ifscCode !== 'N/A') && (
+                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <h4 className="text-base font-semibold text-purple-900 mb-3">🏦 Bank Details</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {result.vendor.bankName !== 'N/A' && (
+                        <div>
+                          <p className="text-xs text-purple-700 uppercase tracking-wide">Bank Name</p>
+                          <p className="text-sm text-purple-900">{result.vendor.bankName}</p>
+                        </div>
+                      )}
+                      {result.vendor.accountHolderName !== 'N/A' && (
+                        <div>
+                          <p className="text-xs text-purple-700 uppercase tracking-wide">Account Holder</p>
+                          <p className="text-sm text-purple-900">{result.vendor.accountHolderName}</p>
+                        </div>
+                      )}
+                      {result.vendor.ifscCode !== 'N/A' && (
+                        <div>
+                          <p className="text-xs text-purple-700 uppercase tracking-wide">IFSC Code</p>
+                          <p className="text-sm text-purple-900">{result.vendor.ifscCode}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                         <div className="text-sm text-gray-700">{p.paymentType}</div>
                         <div className="text-sm font-semibold text-gray-900 flex items-center gap-3">
                           <span>{p.amount}</span>
@@ -421,8 +597,8 @@ export default function InspectorScanPage() {
                   </div>
                 )}
 
-                <div className="p-4 border border-gray-100 rounded-md bg-white">
-                  <h4 className="text-sm font-semibold mb-3">Record Inspection</h4>
+                <div className="bg-white p-4 border border-gray-200 rounded-lg">
+                  <h4 className="text-sm font-semibold mb-3">🔍 Record Inspection</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="flex flex-col gap-2">
                         <Select
